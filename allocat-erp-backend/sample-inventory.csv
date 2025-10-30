@@ -1,0 +1,7 @@
+product_code,product_name,expected_quantity,unit_price,supplier_name,supplier_invoice,batch_number,notes
+PROD001,Widget A,100,25.50,Supplier ABC,INV-001,BATCH-001,Initial stock delivery
+PROD002,Widget B,50,15.75,Supplier XYZ,INV-002,BATCH-002,Replacement stock
+PROD003,Widget C,75,32.00,Supplier DEF,INV-003,BATCH-003,New product line
+PROD004,Widget D,200,12.25,Supplier ABC,INV-004,BATCH-004,Bulk order
+PROD005,Widget E,30,45.00,Supplier GHI,INV-005,BATCH-005,Premium quality
+
