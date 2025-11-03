@@ -1,6 +1,8 @@
 package com.allocat.api.controller;
 
+import com.allocat.api.dto.user.UserResponse;
 import com.allocat.auth.entity.Role;
+import com.allocat.auth.entity.Store;
 import com.allocat.auth.entity.User;
 import com.allocat.auth.service.StoreService;
 import com.allocat.auth.service.UserService;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -49,21 +52,40 @@ public class UserController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<ApiResponse<List<User>>> getAllUsers() {
+    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String currentUsername = auth.getName();
             User currentUser = userService.getUserByUsername(currentUsername);
             
+            List<User> users;
             // If ADMIN, only show users from the same store
             if (currentUser.getRole().getName().equals("ADMIN") && currentUser.getStoreId() != null) {
-                List<User> users = userService.getUsersByStoreId(currentUser.getStoreId());
-                return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
+                users = userService.getUsersByStoreId(currentUser.getStoreId());
+            } else {
+                // SUPER_ADMIN sees all users
+                users = userService.getAllUsers();
             }
             
-            // SUPER_ADMIN sees all users
-            List<User> users = userService.getAllUsers();
-            return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
+            // Convert to UserResponse with store codes
+            List<UserResponse> userResponses = users.stream()
+                    .map(user -> {
+                        String storeCode = null;
+                        String storeName = null;
+                        if (user.getStoreId() != null) {
+                            try {
+                                Store store = storeService.getStoreById(user.getStoreId());
+                                storeCode = store.getCode();
+                                storeName = store.getName();
+                            } catch (Exception e) {
+                                log.warn("Store not found for user {}: {}", user.getUsername(), e.getMessage());
+                            }
+                        }
+                        return UserResponse.fromEntity(user, storeCode, storeName);
+                    })
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(ApiResponse.success(userResponses, "Users retrieved successfully"));
         } catch (Exception e) {
             log.error("Error retrieving users", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -90,7 +112,8 @@ public class UserController {
             @Schema(example = "Doe") String lastName,
             @Schema(example = "+1234567890") String phone,
             @Schema(example = "SALES_STAFF", description = "Role name (e.g., SUPER_ADMIN, ADMIN, STORE_MANAGER, etc.)") String roleName,
-            @Schema(example = "STR001", description = "Store Code (alphanumeric like STR001, CRK2645, etc.)") String storeCode
+            @Schema(example = "STR001", description = "Store Code (alphanumeric like STR001, CRK2645, etc.)") String storeCode,
+            @Schema(description = "Store ID (deprecated - use storeCode instead)", deprecated = true) Long storeId
     ) {}
     
     @PostMapping
@@ -100,7 +123,7 @@ public class UserController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid user data"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<ApiResponse<User>> createUser(
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(
             @Parameter(description = "User object to be created", required = true)
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "User details",
@@ -114,6 +137,7 @@ public class UserController {
                                             {
                                                 "username": "john_doe",
                                                 "email": "john@example.com",
+                                                "password": "password",
                                                 "firstName": "John",
                                                 "lastName": "Doe",
                                                 "phone": "+1234567890"
@@ -133,22 +157,39 @@ public class UserController {
             // Set role (default to VIEWER if not specified)
             String roleName = (req.roleName() == null || req.roleName().isBlank()) ? "VIEWER" : req.roleName();
             
-            // Determine store ID from store code
+            // Determine store ID from store code or storeId (backward compatibility)
             Long assignedStoreId = null;
+            String assignedStoreCode = null;
+            String assignedStoreName = null;
+            
+            // Prefer storeCode over storeId
             if (req.storeCode() != null && !req.storeCode().isBlank()) {
-                // Check if store exists
+                // Check if store exists by code
                 if (!storeService.existsByCode(req.storeCode())) {
                     return ResponseEntity.badRequest()
                             .body(ApiResponse.error("Store with code '" + req.storeCode() + "' does not exist. Please use a valid store code (e.g., STR001, CRK2645)."));
                 }
                 
-                // Get the store ID by code
+                // Get the store by code
                 try {
-                    var store = storeService.getStoreByCode(req.storeCode());
+                    Store store = storeService.getStoreByCode(req.storeCode());
                     assignedStoreId = store.getId();
+                    assignedStoreCode = store.getCode();
+                    assignedStoreName = store.getName();
                 } catch (IllegalArgumentException e) {
                     return ResponseEntity.badRequest()
                             .body(ApiResponse.error("Store with code '" + req.storeCode() + "' not found."));
+                }
+            } else if (req.storeId() != null) {
+                // Backward compatibility: accept storeId
+                try {
+                    Store store = storeService.getStoreById(req.storeId());
+                    assignedStoreId = store.getId();
+                    assignedStoreCode = store.getCode();
+                    assignedStoreName = store.getName();
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest()
+                            .body(ApiResponse.error("Store with ID '" + req.storeId() + "' not found. Please use storeCode instead."));
                 }
             }
             
@@ -202,7 +243,9 @@ public class UserController {
             User createdUser = userService.createUser(toCreate);
             log.info("User created successfully: {} by {}", createdUser.getUsername(), currentUsername);
             
-            return ResponseEntity.ok(ApiResponse.success(createdUser, "User created successfully"));
+            // Return UserResponse with store code
+            UserResponse response = UserResponse.fromEntity(createdUser, assignedStoreCode, assignedStoreName);
+            return ResponseEntity.ok(ApiResponse.success(response, "User created successfully"));
             
         } catch (IllegalArgumentException e) {
             log.error("Error creating user: {}", e.getMessage());

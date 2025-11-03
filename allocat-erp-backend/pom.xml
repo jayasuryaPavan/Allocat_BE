@@ -25,6 +25,7 @@
         <module>allocat-common</module>
         <module>allocat-security</module>
         <module>allocat-core</module>
+        <module>allocat-ai</module>
         <module>allocat-api</module>
     </modules>
 

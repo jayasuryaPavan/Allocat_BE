@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,20 +30,31 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "Get all products", 
-               description = "Retrieve all products with optional pagination and filtering")
+               description = "Retrieve all products with pagination, sorting, and filtering")
     public ResponseEntity<ApiResponse<Page<Product>>> getAllProducts(
             @Parameter(description = "Page number (0-based)") 
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") 
             @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort by field (e.g., 'name', 'productCode', 'unitPrice', 'category')") 
+            @RequestParam(defaultValue = "id") String sortBy,
+            @Parameter(description = "Sort direction: 'asc' or 'desc'") 
+            @RequestParam(defaultValue = "asc") String sortDirection,
             @Parameter(description = "Search term for product name, code, or barcode") 
             @RequestParam(required = false) String search,
             @Parameter(description = "Filter by category") 
             @RequestParam(required = false) String category,
             @Parameter(description = "Filter by supplier name") 
-            @RequestParam(required = false) String supplier) {
+            @RequestParam(required = false) String supplier,
+            @Parameter(description = "Filter by active status") 
+            @RequestParam(required = false) Boolean active) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            // Create sort object
+            Sort sort = sortDirection.equalsIgnoreCase("desc") ? 
+                    Sort.by(sortBy).descending() : 
+                    Sort.by(sortBy).ascending();
+            
+            Pageable pageable = PageRequest.of(page, size, sort);
             Page<Product> products;
 
             if (search != null && !search.trim().isEmpty()) {
@@ -51,13 +63,15 @@ public class ProductController {
                 products = productRepository.findByCategory(category, pageable);
             } else if (supplier != null && !supplier.trim().isEmpty()) {
                 products = productRepository.findBySupplierName(supplier, pageable);
+            } else if (active != null && active) {
+                products = productRepository.findByIsActiveTrue(pageable);
             } else {
                 products = productRepository.findAll(pageable);
             }
 
             return ResponseEntity.ok(ApiResponse.<Page<Product>>builder()
                     .success(true)
-                    .message("Products retrieved successfully")
+                    .message("Products retrieved successfully. Page " + (page + 1) + " of " + products.getTotalPages())
                     .data(products)
                     .build());
         } catch (Exception e) {

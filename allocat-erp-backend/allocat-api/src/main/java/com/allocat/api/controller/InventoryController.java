@@ -4,6 +4,7 @@ import com.allocat.common.dto.ApiResponse;
 import com.allocat.inventory.dto.ReceivedStockRequest;
 import com.allocat.inventory.entity.Inventory;
 import com.allocat.inventory.entity.ReceivedStock;
+import com.allocat.inventory.repository.InventoryRepository;
 import com.allocat.inventory.service.ReceivedStockService;
 import com.allocat.inventory.service.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +12,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +31,7 @@ public class InventoryController {
 
     private final InventoryService inventoryService;
     private final ReceivedStockService receivedStockService;
+    private final InventoryRepository inventoryRepository;
 
     @PostMapping("/received-stock")
     @Operation(summary = "Add received stock via JSON", 
@@ -131,19 +137,34 @@ public class InventoryController {
 
     @GetMapping("/current")
     @Operation(summary = "Get current inventory", 
-               description = "Retrieve current inventory levels for all products")
-    public ResponseEntity<ApiResponse<List<Inventory>>> getCurrentInventory() {
+               description = "Retrieve current inventory levels for all products with pagination and sorting")
+    public ResponseEntity<ApiResponse<Page<Inventory>>> getCurrentInventory(
+            @Parameter(description = "Page number (0-based)") 
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") 
+            @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort by field (e.g., 'product.name', 'availableQuantity', 'currentQuantity')") 
+            @RequestParam(defaultValue = "id") String sortBy,
+            @Parameter(description = "Sort direction: 'asc' or 'desc'") 
+            @RequestParam(defaultValue = "asc") String sortDirection) {
         try {
-            List<Inventory> inventory = inventoryService.getAvailableItems();
-            return ResponseEntity.ok(ApiResponse.<List<Inventory>>builder()
+            // Create sort object
+            Sort sort = sortDirection.equalsIgnoreCase("desc") ? 
+                    Sort.by(sortBy).descending() : 
+                    Sort.by(sortBy).ascending();
+            
+            Pageable pageable = PageRequest.of(page, size, sort);
+            Page<Inventory> inventory = inventoryRepository.findAvailableItems(pageable);
+            
+            return ResponseEntity.ok(ApiResponse.<Page<Inventory>>builder()
                     .success(true)
-                    .message("Current inventory retrieved successfully")
+                    .message("Current inventory retrieved successfully. Page " + (page + 1) + " of " + inventory.getTotalPages())
                     .data(inventory)
                     .build());
         } catch (Exception e) {
             log.error("Error retrieving current inventory", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.<List<Inventory>>builder()
+                    .body(ApiResponse.<Page<Inventory>>builder()
                             .success(false)
                             .message("Error retrieving current inventory: " + e.getMessage())
                             .build());
@@ -176,19 +197,33 @@ public class InventoryController {
 
     @GetMapping("/low-stock")
     @Operation(summary = "Get low stock items", 
-               description = "Retrieve products that are below minimum stock level")
-    public ResponseEntity<ApiResponse<List<Inventory>>> getLowStockItems() {
+               description = "Retrieve products that are below minimum stock level with pagination")
+    public ResponseEntity<ApiResponse<Page<Inventory>>> getLowStockItems(
+            @Parameter(description = "Page number (0-based)") 
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") 
+            @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort by field") 
+            @RequestParam(defaultValue = "availableQuantity") String sortBy,
+            @Parameter(description = "Sort direction: 'asc' or 'desc'") 
+            @RequestParam(defaultValue = "asc") String sortDirection) {
         try {
-            List<Inventory> lowStockItems = inventoryService.getLowStockItems();
-            return ResponseEntity.ok(ApiResponse.<List<Inventory>>builder()
+            Sort sort = sortDirection.equalsIgnoreCase("desc") ? 
+                    Sort.by(sortBy).descending() : 
+                    Sort.by(sortBy).ascending();
+            
+            Pageable pageable = PageRequest.of(page, size, sort);
+            Page<Inventory> lowStockItems = inventoryRepository.findLowStockItems(pageable);
+            
+            return ResponseEntity.ok(ApiResponse.<Page<Inventory>>builder()
                     .success(true)
-                    .message("Low stock items retrieved successfully")
+                    .message("Low stock items retrieved successfully. Page " + (page + 1) + " of " + lowStockItems.getTotalPages())
                     .data(lowStockItems)
                     .build());
         } catch (Exception e) {
             log.error("Error retrieving low stock items", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.<List<Inventory>>builder()
+                    .body(ApiResponse.<Page<Inventory>>builder()
                             .success(false)
                             .message("Error retrieving low stock items: " + e.getMessage())
                             .build());
@@ -197,19 +232,33 @@ public class InventoryController {
 
     @GetMapping("/out-of-stock")
     @Operation(summary = "Get out of stock items", 
-               description = "Retrieve products that are completely out of stock")
-    public ResponseEntity<ApiResponse<List<Inventory>>> getOutOfStockItems() {
+               description = "Retrieve products that are completely out of stock with pagination")
+    public ResponseEntity<ApiResponse<Page<Inventory>>> getOutOfStockItems(
+            @Parameter(description = "Page number (0-based)") 
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") 
+            @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort by field") 
+            @RequestParam(defaultValue = "id") String sortBy,
+            @Parameter(description = "Sort direction: 'asc' or 'desc'") 
+            @RequestParam(defaultValue = "asc") String sortDirection) {
         try {
-            List<Inventory> outOfStockItems = inventoryService.getOutOfStockItems();
-            return ResponseEntity.ok(ApiResponse.<List<Inventory>>builder()
+            Sort sort = sortDirection.equalsIgnoreCase("desc") ? 
+                    Sort.by(sortBy).descending() : 
+                    Sort.by(sortBy).ascending();
+            
+            Pageable pageable = PageRequest.of(page, size, sort);
+            Page<Inventory> outOfStockItems = inventoryRepository.findOutOfStockItems(pageable);
+            
+            return ResponseEntity.ok(ApiResponse.<Page<Inventory>>builder()
                     .success(true)
-                    .message("Out of stock items retrieved successfully")
+                    .message("Out of stock items retrieved successfully. Page " + (page + 1) + " of " + outOfStockItems.getTotalPages())
                     .data(outOfStockItems)
                     .build());
         } catch (Exception e) {
             log.error("Error retrieving out of stock items", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.<List<Inventory>>builder()
+                    .body(ApiResponse.<Page<Inventory>>builder()
                             .success(false)
                             .message("Error retrieving out of stock items: " + e.getMessage())
                             .build());

@@ -1,6 +1,8 @@
 package com.allocat.inventory.repository;
 
 import com.allocat.inventory.entity.Inventory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -42,9 +44,21 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     @Query("SELECT i FROM Inventory i WHERE i.availableQuantity > 0")
     List<Inventory> findAvailableItems();
+    
+    @Query("SELECT i FROM Inventory i WHERE i.availableQuantity > 0")
+    Page<Inventory> findAvailableItems(Pageable pageable);
 
     @Query("SELECT i FROM Inventory i WHERE i.availableQuantity = 0")
     List<Inventory> findOutOfStockItems();
+    
+    @Query("SELECT i FROM Inventory i WHERE i.availableQuantity = 0")
+    Page<Inventory> findOutOfStockItems(Pageable pageable);
+    
+    @Query("SELECT i FROM Inventory i WHERE i.currentQuantity <= i.product.minimumStockLevel")
+    Page<Inventory> findLowStockItems(Pageable pageable);
+    
+    @Query("SELECT i FROM Inventory i WHERE i.currentQuantity >= i.product.maximumStockLevel")
+    Page<Inventory> findOverstockItems(Pageable pageable);
 
     @Query("SELECT i FROM Inventory i WHERE i.batchNumber = :batchNumber")
     List<Inventory> findByBatchNumber(@Param("batchNumber") String batchNumber);
