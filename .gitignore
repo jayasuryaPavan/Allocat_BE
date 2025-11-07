@@ -1,0 +1,8 @@
+# Logs
+logs/
+*.log
+*.log.*
+
+# Markdown files
+*.md
+
