@@ -1,0 +1,3 @@
+com\allocat\common\entity\BaseEntity.class
+com\allocat\common\dto\ApiResponse$ApiResponseBuilder.class
+com\allocat\common\dto\ApiResponse.class

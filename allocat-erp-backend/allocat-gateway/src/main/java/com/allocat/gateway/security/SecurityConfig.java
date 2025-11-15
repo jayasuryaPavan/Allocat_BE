@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.oauth2.jwt.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -21,14 +20,18 @@ public class SecurityConfig {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         http
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .authorizeHttpRequests(reg -> reg
-                .requestMatchers(
+            .authorizeExchange(exchange -> exchange
+                .pathMatchers(
                     "/actuator/**",
                     "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
-                    "/api/chat/health", "/health",
+                    // Public health endpoints
+                    "/health", "/api/health",
+                    // Public chat endpoints (InvenGadu)
+                    "/api/chat/**",
+                    // Public auth endpoints
                     "/auth/**", "/api/auth/**"
                 ).permitAll()
-                .anyRequest().authenticated()
+                .pathMatchers("/**").authenticated()
             )
             .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
         return http.build();
@@ -37,10 +40,8 @@ public class SecurityConfig {
     @Bean
     public ReactiveJwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
         SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        return NimbusReactiveJwtDecoder
-            .withSecretKey(key)
-            .macAlgorithm(MacAlgorithm.HS256)
-            .build();
+        // Let Spring Security infer the appropriate MAC algorithm for the given key
+        return NimbusReactiveJwtDecoder.withSecretKey(key).build();
     }
 }
 

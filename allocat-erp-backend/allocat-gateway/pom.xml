@@ -51,6 +51,10 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Ensure the correct main class is used for this module -->
+                    <mainClass>com.allocat.gateway.GatewayApplication</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

@@ -1,0 +1,5 @@
+com\allocat\ai\service\InvenGaduAgentService.class
+com\allocat\ai\service\InventoryTools.class
+com\allocat\ai\config\AiProperties.class
+com\allocat\ai\service\InvenGaduAgentService$InvenGaduAgent.class
+com\allocat\ai\service\InvenGaduAgentService$ToolEnabledAgent.class
