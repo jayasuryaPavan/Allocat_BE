@@ -6,13 +6,6 @@ spring:
     name: allocat-gateway
   cloud:
     gateway:
-      globalcors:
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins: "http://localhost:4200,http://localhost:3000"
-            allowedMethods: "*"
-            allowedHeaders: "*"
-            allowCredentials: true
       routes:
         - id: invengadu-chat
           uri: http://localhost:8000

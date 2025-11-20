@@ -56,8 +56,6 @@ jwt:
   refresh-expiration: 604800000
 
 app:
-  cors:
-    allowed-origins: ${CORS_ORIGINS:http://localhost:4200,http://localhost:3000,http://localhost:5173,http://localhost:8081}
   file:
     upload-dir: ${UPLOAD_DIR:./uploads}
     max-file-size: 5MB

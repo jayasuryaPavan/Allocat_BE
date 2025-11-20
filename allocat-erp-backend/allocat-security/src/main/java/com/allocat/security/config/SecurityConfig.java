@@ -34,7 +34,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> {})
+            .cors(cors -> cors.disable())  // Disable CORS at backend - handled by gateway
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint(jwtAuthenticationEntryPoint)

@@ -7,12 +7,22 @@ spring:
   cloud:
     gateway:
       globalcors:
-        corsConfigurations:
+        cors-configurations:
           '[/**]':
-            allowedOrigins: "http://localhost:4200,http://localhost:3000"
-            allowedMethods: "*"
-            allowedHeaders: "*"
-            allowCredentials: true
+            allowed-origins: "*"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+              - HEAD
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
       routes:
         - id: invengadu-chat
           uri: http://localhost:8000
