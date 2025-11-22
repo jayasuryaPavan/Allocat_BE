@@ -6,23 +6,6 @@ spring:
     name: allocat-gateway
   cloud:
     gateway:
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowed-origins: "*"
-            allowed-methods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
-              - PATCH
-              - HEAD
-            allowed-headers: "*"
-            allow-credentials: true
-            max-age: 3600
-      default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials RETAIN_FIRST
       routes:
         - id: invengadu-chat
           uri: http://localhost:8000
@@ -35,11 +18,15 @@ spring:
           uri: http://localhost:8081
           predicates:
             - Path=/api/**, /v3/api-docs/**, /swagger-ui.html, /swagger-ui/**
+          filters:
+            - PreserveHostHeader
 
         - id: auth
           uri: http://localhost:8081
           predicates:
             - Path=/auth/**, /api/auth/**
+          filters:
+            - PreserveHostHeader
 
 jwt:
   secret: ${JWT_SECRET:allocat-erp-super-secret-jwt-signing-key-minimum-256-bits-required-for-security}

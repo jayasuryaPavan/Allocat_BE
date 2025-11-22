@@ -1,21 +1,14 @@
 package com.allocat.gateway.security;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
-import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Configuration
@@ -27,34 +20,16 @@ public class SecurityConfig {
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeExchange(exchange -> exchange
-                .pathMatchers(
-                    "/actuator/**",
-                    "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
-                    // Public health endpoints
-                    "/health", "/api/health",
-                    // Public chat endpoints (InvenGadu)
-                    "/api/chat/**",
-                    // Public auth endpoints
-                    "/auth/**", "/api/auth/**"
-                ).permitAll()
                 .pathMatchers(HttpMethod.OPTIONS).permitAll()
-                .pathMatchers("/**").authenticated()
-            )
-            .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
+                .pathMatchers("/**").permitAll()  // Gateway is just a proxy - auth handled by downstream services
+            );
         return http.build();
-    }
-
-    @Bean
-    public ReactiveJwtDecoder jwtDecoder(@Value("${jwt.secret}") String secret) {
-        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-        // Let Spring Security infer the appropriate MAC algorithm for the given key
-        return NimbusReactiveJwtDecoder.withSecretKey(key).build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200", "http://localhost:3000", "http://localhost:5173"));
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

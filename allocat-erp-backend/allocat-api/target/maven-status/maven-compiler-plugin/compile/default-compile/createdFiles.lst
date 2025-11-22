@@ -5,7 +5,6 @@ com\allocat\api\dto\store\UpdateStoreRequest.class
 com\allocat\api\controller\CustomErrorController.class
 com\allocat\api\controller\ChatController.class
 com\allocat\api\dto\AuthResponse.class
-com\allocat\api\config\CorsConfig.class
 com\allocat\api\dto\store\StoreAccessRequest$StoreAccessRequestBuilder.class
 com\allocat\api\dto\user\UserResponse.class
 com\allocat\api\dto\store\UpdateStoreRequest$UpdateStoreRequestBuilder.class

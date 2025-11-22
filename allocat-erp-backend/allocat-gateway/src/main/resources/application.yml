@@ -18,11 +18,15 @@ spring:
           uri: http://localhost:8081
           predicates:
             - Path=/api/**, /v3/api-docs/**, /swagger-ui.html, /swagger-ui/**
+          filters:
+            - PreserveHostHeader
 
         - id: auth
           uri: http://localhost:8081
           predicates:
             - Path=/auth/**, /api/auth/**
+          filters:
+            - PreserveHostHeader
 
 jwt:
   secret: ${JWT_SECRET:allocat-erp-super-secret-jwt-signing-key-minimum-256-bits-required-for-security}
