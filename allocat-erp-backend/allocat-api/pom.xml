@@ -26,11 +26,6 @@
             <artifactId>allocat-security</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.allocat</groupId>
-            <artifactId>allocat-ai</artifactId>
-            <version>${project.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

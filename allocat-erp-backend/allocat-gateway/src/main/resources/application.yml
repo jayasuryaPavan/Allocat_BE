@@ -10,23 +10,26 @@ spring:
         - id: invengadu-chat
           uri: http://localhost:8000
           predicates:
-            - Path=/api/chat/**
+            - Path=/api/v1/extract/**
           filters:
             - RewritePath=/api/chat/(?<segment>.*), /api/chat/${segment}
+
+        - id: xtractor-extract
+          uri: http://localhost:8001
+          predicates:
+            - Path=/api/v1/extract/**
+          filters:
+            - RewritePath=/api/v1/extract/(?<segment>.*), /api/v1/extract/${segment}
 
         - id: backend-api
           uri: http://localhost:8081
           predicates:
             - Path=/api/**, /v3/api-docs/**, /swagger-ui.html, /swagger-ui/**
-          filters:
-            - PreserveHostHeader
 
         - id: auth
           uri: http://localhost:8081
           predicates:
             - Path=/auth/**, /api/auth/**
-          filters:
-            - PreserveHostHeader
 
 jwt:
   secret: ${JWT_SECRET:allocat-erp-super-secret-jwt-signing-key-minimum-256-bits-required-for-security}

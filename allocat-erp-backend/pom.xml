@@ -27,7 +27,6 @@
         <module>allocat-security</module>
         <module>allocat-core</module>
         <module>allocat-gateway</module>
-        <module>allocat-ai</module>
         <module>allocat-api</module>
     </modules>
 
