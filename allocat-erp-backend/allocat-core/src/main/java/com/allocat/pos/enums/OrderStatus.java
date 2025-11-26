@@ -37,5 +37,10 @@ public enum OrderStatus {
     /**
      * Order has been returned
      */
-    RETURNED
+    RETURNED,
+
+    /**
+     * Order is held/parked
+     */
+    HELD
 }

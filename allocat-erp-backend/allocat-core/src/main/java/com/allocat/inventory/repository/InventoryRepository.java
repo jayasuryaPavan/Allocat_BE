@@ -44,19 +44,19 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     @Query("SELECT i FROM Inventory i WHERE i.availableQuantity > 0")
     List<Inventory> findAvailableItems();
-    
+
     @Query("SELECT i FROM Inventory i WHERE i.availableQuantity > 0")
     Page<Inventory> findAvailableItems(Pageable pageable);
 
     @Query("SELECT i FROM Inventory i WHERE i.availableQuantity = 0")
     List<Inventory> findOutOfStockItems();
-    
+
     @Query("SELECT i FROM Inventory i WHERE i.availableQuantity = 0")
     Page<Inventory> findOutOfStockItems(Pageable pageable);
-    
+
     @Query("SELECT i FROM Inventory i WHERE i.currentQuantity <= i.product.minimumStockLevel")
     Page<Inventory> findLowStockItems(Pageable pageable);
-    
+
     @Query("SELECT i FROM Inventory i WHERE i.currentQuantity >= i.product.maximumStockLevel")
     Page<Inventory> findOverstockItems(Pageable pageable);
 
@@ -77,5 +77,11 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     @Query("SELECT SUM(i.reservedQuantity) FROM Inventory i WHERE i.product.id = :productId")
     Integer getTotalReservedQuantityByProductId(@Param("productId") Long productId);
-}
 
+    /**
+     * Find inventory items by store with quantity less than threshold
+     */
+    @Query("SELECT i FROM Inventory i WHERE i.store.id = :storeId AND i.currentQuantity < :threshold")
+    List<Inventory> findByStoreIdAndQuantityLessThan(@Param("storeId") Long storeId,
+            @Param("threshold") Integer threshold);
+}

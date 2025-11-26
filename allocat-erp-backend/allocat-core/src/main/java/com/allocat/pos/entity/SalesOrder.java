@@ -54,6 +54,9 @@ public class SalesOrder extends BaseEntity {
     @JoinColumn(name = "cashier_id")
     private User cashier;
 
+    @Column(name = "original_order_id")
+    private Long originalOrderId;
+
     @Column(name = "order_date")
     @Builder.Default
     private LocalDateTime orderDate = LocalDateTime.now();

@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * REST Controller for Point of Sale operations
  */
@@ -185,6 +187,84 @@ public class POSController {
             log.error("Error during checkout for cart: {}", cartId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Checkout failed: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/cart/{cartId}/hold")
+    @Operation(summary = "Hold/Park order", description = "Hold the current cart as a parked order")
+    public ResponseEntity<ApiResponse<SalesOrder>> holdOrder(
+            @Parameter(description = "Cart ID") @PathVariable String cartId,
+            @RequestBody(required = false) CheckoutRequest request) {
+        try {
+            CartDTO cart = posService.getCart(cartId);
+            Long customerId = request != null ? request.getCustomerId() : null;
+            String notes = request != null ? request.getNotes() : null;
+
+            SalesOrder heldOrder = salesOrderService.holdOrder(cart, customerId, notes);
+
+            // Clear the cart after holding
+            posService.deleteCart(cartId);
+
+            return ResponseEntity.ok(ApiResponse.success(heldOrder, "Order held successfully"));
+        } catch (Exception e) {
+            log.error("Error holding order for cart: {}", cartId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to hold order: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/orders/held")
+    @Operation(summary = "Get held orders", description = "Get all held/parked orders for a store")
+    public ResponseEntity<ApiResponse<List<SalesOrder>>> getHeldOrders(
+            @Parameter(description = "Store ID") @RequestParam Long storeId) {
+        try {
+            List<SalesOrder> heldOrders = salesOrderService.getHeldOrders(storeId);
+            return ResponseEntity.ok(ApiResponse.success(heldOrders));
+        } catch (Exception e) {
+            log.error("Error retrieving held orders for store: {}", storeId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve held orders: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/orders/{orderId}/resume")
+    @Operation(summary = "Resume held order", description = "Resume a held order and return its details")
+    public ResponseEntity<ApiResponse<SalesOrder>> resumeOrder(
+            @Parameter(description = "Order ID") @PathVariable Long orderId) {
+        try {
+            SalesOrder resumedOrder = salesOrderService.resumeOrder(orderId);
+            return ResponseEntity.ok(ApiResponse.success(resumedOrder, "Order resumed successfully"));
+        } catch (Exception e) {
+            log.error("Error resuming order: {}", orderId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to resume order: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/orders/search")
+    @Operation(summary = "Search order", description = "Search for an order by order number")
+    public ResponseEntity<ApiResponse<SalesOrder>> searchOrder(@RequestParam String query) {
+        try {
+            SalesOrder order = salesOrderService.getOrderByOrderNo(query);
+            return ResponseEntity.ok(ApiResponse.success(order));
+        } catch (Exception e) {
+            log.error("Error searching for order: {}", query, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Order not found: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/returns")
+    @Operation(summary = "Process return", description = "Process a return request for an order")
+    public ResponseEntity<ApiResponse<SalesOrder>> processReturn(
+            @RequestBody com.allocat.pos.dto.ReturnRequest request) {
+        try {
+            SalesOrder returnOrder = salesOrderService.processReturn(request);
+            return ResponseEntity.ok(ApiResponse.success(returnOrder, "Return processed successfully"));
+        } catch (Exception e) {
+            log.error("Error processing return: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to process return: " + e.getMessage()));
         }
     }
 
