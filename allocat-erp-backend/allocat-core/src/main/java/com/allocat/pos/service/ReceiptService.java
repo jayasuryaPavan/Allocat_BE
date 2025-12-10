@@ -27,7 +27,7 @@ public class ReceiptService {
      * Generate a receipt for a sales order
      */
     @Transactional
-    public Receipt generateReceipt(Long orderId, String format) {
+    public Receipt generateReceipt(long orderId, String format) {
         SalesOrder order = salesOrderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
@@ -47,6 +47,7 @@ public class ReceiptService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
+        @SuppressWarnings("null") // Spring Data JPA save() never returns null
         Receipt saved = receiptRepository.save(receipt);
         log.info("Generated {} receipt: {}", format, receiptNo);
         return saved;
@@ -55,7 +56,7 @@ public class ReceiptService {
     /**
      * Get receipt by order ID
      */
-    public Receipt getReceiptByOrderId(Long orderId) {
+    public Receipt getReceiptByOrderId(long orderId) {
         return receiptRepository.findBySalesOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Receipt not found for order: " + orderId));
     }
@@ -81,7 +82,7 @@ public class ReceiptService {
      * This would use a library like iText or Apache PDFBox to generate
      * a formatted PDF receipt with store logo, items, totals, etc.
      */
-    public byte[] generateReceiptPDF(Long orderId) {
+    public byte[] generateReceiptPDF(long orderId) {
         throw new UnsupportedOperationException("PDF generation not yet implemented");
     }
 
@@ -89,7 +90,7 @@ public class ReceiptService {
      * TODO: Implement thermal receipt printing
      * This would generate ESC/POS commands for thermal printers
      */
-    public String generateThermalReceipt(Long orderId) {
+    public String generateThermalReceipt(long orderId) {
         throw new UnsupportedOperationException("Thermal receipt printing not yet implemented");
     }
 }

@@ -43,7 +43,7 @@ public class POSService {
     /**
      * Create a new shopping cart
      */
-    public CartDTO createCart(Long storeId, Long cashierId) {
+    public CartDTO createCart(long storeId, long cashierId) {
         // Validate store and cashier exist
         if (!storeRepository.existsById(storeId)) {
             throw new RuntimeException("Store not found");
@@ -84,7 +84,7 @@ public class POSService {
     /**
      * Add item to cart by product ID
      */
-    public CartDTO addItemToCart(String cartId, Long productId, Integer quantity) {
+    public CartDTO addItemToCart(String cartId, long productId, Integer quantity) {
         CartDTO cart = getCart(cartId);
 
         Product product = productRepository.findById(productId)

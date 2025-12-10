@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.annotation.PostConstruct;
 
 import java.util.List;
 
@@ -32,11 +33,19 @@ public class POSController {
     private final SalesOrderService salesOrderService;
     private final PaymentService paymentService;
 
+    @PostConstruct
+    public void init() {
+        log.info("POSController initialized successfully. Endpoints registered at /api/pos/**");
+    }
+
     @PostMapping("/cart")
     @Operation(summary = "Create new cart", description = "Create a new shopping cart for POS transaction")
     public ResponseEntity<ApiResponse<CartDTO>> createCart(@RequestBody CreateCartRequest request) {
+        log.info("POST /api/pos/cart - Creating cart for storeId: {}, cashierId: {}",
+                request.getStoreId(), request.getCashierId());
         try {
             CartDTO cart = posService.createCart(request.getStoreId(), request.getCashierId());
+            log.info("Cart created successfully: {}", cart.getCartId());
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(cart, "Cart created successfully"));
         } catch (Exception e) {

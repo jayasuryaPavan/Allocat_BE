@@ -29,31 +29,21 @@ public class ProductController {
     private final ProductRepository productRepository;
 
     @GetMapping
-    @Operation(summary = "Get all products", 
-               description = "Retrieve all products with pagination, sorting, and filtering")
+    @Operation(summary = "Get all products", description = "Retrieve all products with pagination, sorting, and filtering")
     public ResponseEntity<ApiResponse<Page<Product>>> getAllProducts(
-            @Parameter(description = "Page number (0-based)") 
-            @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") 
-            @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Sort by field (e.g., 'name', 'productCode', 'unitPrice', 'category')") 
-            @RequestParam(defaultValue = "id") String sortBy,
-            @Parameter(description = "Sort direction: 'asc' or 'desc'") 
-            @RequestParam(defaultValue = "asc") String sortDirection,
-            @Parameter(description = "Search term for product name, code, or barcode") 
-            @RequestParam(required = false) String search,
-            @Parameter(description = "Filter by category") 
-            @RequestParam(required = false) String category,
-            @Parameter(description = "Filter by supplier name") 
-            @RequestParam(required = false) String supplier,
-            @Parameter(description = "Filter by active status") 
-            @RequestParam(required = false) Boolean active) {
+            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort by field (e.g., 'name', 'productCode', 'unitPrice', 'category')") @RequestParam(defaultValue = "id") String sortBy,
+            @Parameter(description = "Sort direction: 'asc' or 'desc'") @RequestParam(defaultValue = "asc") String sortDirection,
+            @Parameter(description = "Search term for product name, code, or barcode") @RequestParam(required = false) String search,
+            @Parameter(description = "Filter by category") @RequestParam(required = false) String category,
+            @Parameter(description = "Filter by supplier name") @RequestParam(required = false) String supplier,
+            @Parameter(description = "Filter by active status") @RequestParam(required = false) Boolean active) {
         try {
             // Create sort object
-            Sort sort = sortDirection.equalsIgnoreCase("desc") ? 
-                    Sort.by(sortBy).descending() : 
-                    Sort.by(sortBy).ascending();
-            
+            Sort sort = sortDirection.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending()
+                    : Sort.by(sortBy).ascending();
+
             Pageable pageable = PageRequest.of(page, size, sort);
             Page<Product> products;
 
@@ -85,11 +75,9 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get product by ID", 
-               description = "Retrieve a specific product by its ID")
+    @Operation(summary = "Get product by ID", description = "Retrieve a specific product by its ID")
     public ResponseEntity<ApiResponse<Product>> getProductById(
-            @Parameter(description = "Product ID") 
-            @PathVariable Long id) {
+            @Parameter(description = "Product ID") @PathVariable long id) {
         try {
             return productRepository.findById(id)
                     .map(product -> ResponseEntity.ok(ApiResponse.<Product>builder()
@@ -109,11 +97,9 @@ public class ProductController {
     }
 
     @GetMapping("/code/{productCode}")
-    @Operation(summary = "Get product by product code", 
-               description = "Retrieve a specific product by its product code")
+    @Operation(summary = "Get product by product code", description = "Retrieve a specific product by its product code")
     public ResponseEntity<ApiResponse<Product>> getProductByCode(
-            @Parameter(description = "Product code") 
-            @PathVariable String productCode) {
+            @Parameter(description = "Product code") @PathVariable String productCode) {
         try {
             return productRepository.findByProductCode(productCode)
                     .map(product -> ResponseEntity.ok(ApiResponse.<Product>builder()
@@ -133,11 +119,9 @@ public class ProductController {
     }
 
     @PostMapping
-    @Operation(summary = "Create new product", 
-               description = "Create a new product in the system")
+    @Operation(summary = "Create new product", description = "Create a new product in the system")
     public ResponseEntity<ApiResponse<Product>> createProduct(
-            @Parameter(description = "Product details") 
-            @RequestBody Product product) {
+            @Parameter(description = "Product details") @RequestBody Product product) {
         try {
             // Check if product code already exists
             if (productRepository.existsByProductCode(product.getProductCode())) {
@@ -175,13 +159,10 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update product", 
-               description = "Update an existing product")
+    @Operation(summary = "Update product", description = "Update an existing product")
     public ResponseEntity<ApiResponse<Product>> updateProduct(
-            @Parameter(description = "Product ID") 
-            @PathVariable Long id,
-            @Parameter(description = "Updated product details") 
-            @RequestBody Product product) {
+            @Parameter(description = "Product ID") @PathVariable long id,
+            @Parameter(description = "Updated product details") @RequestBody Product product) {
         try {
             Optional<Product> existingProduct = productRepository.findById(id);
             if (existingProduct.isEmpty()) {
@@ -190,7 +171,7 @@ public class ProductController {
 
             // Check if product code is being changed and if it already exists
             if (!existingProduct.get().getProductCode().equals(product.getProductCode()) &&
-                productRepository.existsByProductCode(product.getProductCode())) {
+                    productRepository.existsByProductCode(product.getProductCode())) {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.<Product>builder()
                                 .success(false)
@@ -199,9 +180,9 @@ public class ProductController {
             }
 
             // Check if barcode is being changed and if it already exists
-            if (product.getBarcode() != null && 
-                !existingProduct.get().getBarcode().equals(product.getBarcode()) &&
-                productRepository.existsByBarcode(product.getBarcode())) {
+            if (product.getBarcode() != null &&
+                    !existingProduct.get().getBarcode().equals(product.getBarcode()) &&
+                    productRepository.existsByBarcode(product.getBarcode())) {
                 return ResponseEntity.badRequest()
                         .body(ApiResponse.<Product>builder()
                                 .success(false)
@@ -227,11 +208,9 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete product", 
-               description = "Delete a product (soft delete by setting isActive to false)")
+    @Operation(summary = "Delete product", description = "Delete a product (soft delete by setting isActive to false)")
     public ResponseEntity<ApiResponse<Void>> deleteProduct(
-            @Parameter(description = "Product ID") 
-            @PathVariable Long id) {
+            @Parameter(description = "Product ID") @PathVariable long id) {
         try {
             Optional<Product> product = productRepository.findById(id);
             if (product.isEmpty()) {
@@ -258,11 +237,9 @@ public class ProductController {
     }
 
     @GetMapping("/search")
-    @Operation(summary = "Search products", 
-               description = "Search products by name, code, or barcode")
+    @Operation(summary = "Search products", description = "Search products by name, code, or barcode")
     public ResponseEntity<ApiResponse<List<Product>>> searchProducts(
-            @Parameter(description = "Search term") 
-            @RequestParam String searchTerm) {
+            @Parameter(description = "Search term") @RequestParam String searchTerm) {
         try {
             List<Product> products = productRepository.searchProducts(searchTerm);
             return ResponseEntity.ok(ApiResponse.<List<Product>>builder()
@@ -281,8 +258,7 @@ public class ProductController {
     }
 
     @GetMapping("/categories")
-    @Operation(summary = "Get all product categories", 
-               description = "Retrieve all unique product categories")
+    @Operation(summary = "Get all product categories", description = "Retrieve all unique product categories")
     public ResponseEntity<ApiResponse<List<String>>> getCategories() {
         try {
             List<String> categories = productRepository.findDistinctCategories();
@@ -301,4 +277,3 @@ public class ProductController {
         }
     }
 }
-

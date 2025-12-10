@@ -16,7 +16,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,243 +27,247 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AnalyticsService {
 
-    private final SalesOrderRepository salesOrderRepository;
-    private final InventoryRepository inventoryRepository;
+        private final SalesOrderRepository salesOrderRepository;
+        private final InventoryRepository inventoryRepository;
 
-    /**
-     * Get sales summary for a specific date range
-     */
-    public AnalyticsDTO.SalesSummary getSalesSummary(LocalDate startDate, LocalDate endDate, Long storeId) {
-        LocalDateTime start = startDate.atStartOfDay();
-        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
+        /**
+         * Get sales summary for a specific date range
+         */
+        public AnalyticsDTO.SalesSummary getSalesSummary(LocalDate startDate, LocalDate endDate, Long storeId) {
+                LocalDateTime start = startDate.atStartOfDay();
+                LocalDateTime end = endDate.plusDays(1).atStartOfDay();
 
-        List<SalesOrder> orders = salesOrderRepository.findByOrderDateBetweenAndStoreIdAndStatus(
-                start, end, storeId, OrderStatus.COMPLETED);
+                List<SalesOrder> orders = salesOrderRepository.findByOrderDateBetweenAndStoreIdAndStatus(
+                                start, end, storeId, OrderStatus.COMPLETED);
 
-        BigDecimal totalSales = orders.stream()
-                .map(SalesOrder::getTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal totalSales = orders.stream()
+                                .map(SalesOrder::getTotal)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal taxCollected = orders.stream()
-                .map(SalesOrder::getTaxAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal taxCollected = orders.stream()
+                                .map(SalesOrder::getTaxAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal discountsGiven = orders.stream()
-                .map(SalesOrder::getDiscountAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal discountsGiven = orders.stream()
+                                .map(SalesOrder::getDiscountAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Long transactionCount = (long) orders.size();
-        BigDecimal averageTicket = transactionCount > 0
-                ? totalSales.divide(BigDecimal.valueOf(transactionCount), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
+                Long transactionCount = (long) orders.size();
+                BigDecimal averageTicket = transactionCount > 0
+                                ? totalSales.divide(BigDecimal.valueOf(transactionCount), 2, RoundingMode.HALF_UP)
+                                : BigDecimal.ZERO;
 
-        return AnalyticsDTO.SalesSummary.builder()
-                .date(startDate)
-                .totalSales(totalSales)
-                .transactionCount(transactionCount)
-                .averageTicket(averageTicket)
-                .taxCollected(taxCollected)
-                .discountsGiven(discountsGiven)
-                .build();
-    }
-
-    /**
-     * Get sales trends over a period
-     */
-    public AnalyticsDTO.SalesTrendResponse getSalesTrends(LocalDate startDate, LocalDate endDate, Long storeId,
-            String periodType) {
-        LocalDateTime start = startDate.atStartOfDay();
-        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
-
-        List<SalesOrder> orders = salesOrderRepository.findByOrderDateBetweenAndStoreIdAndStatus(
-                start, end, storeId, OrderStatus.COMPLETED);
-
-        List<AnalyticsDTO.TrendData> trends = new ArrayList<>();
-
-        if ("daily".equals(periodType)) {
-            // Group by day
-            Map<LocalDate, List<SalesOrder>> ordersByDay = orders.stream()
-                    .collect(Collectors.groupingBy(order -> order.getOrderDate().toLocalDate()));
-
-            ordersByDay.forEach((date, dayOrders) -> {
-                BigDecimal daySales = dayOrders.stream()
-                        .map(SalesOrder::getTotal)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                trends.add(AnalyticsDTO.TrendData.builder()
-                        .period(date.toString())
-                        .sales(daySales)
-                        .transactions((long) dayOrders.size())
-                        .build());
-            });
-        } else if ("weekly".equals(periodType)) {
-            // Group by week
-            Map<String, List<SalesOrder>> ordersByWeek = orders.stream()
-                    .collect(Collectors.groupingBy(order -> {
-                        LocalDate date = order.getOrderDate().toLocalDate();
-                        return date.getYear() + "-W" + date.format(DateTimeFormatter.ofPattern("ww"));
-                    }));
-
-            ordersByWeek.forEach((week, weekOrders) -> {
-                BigDecimal weekSales = weekOrders.stream()
-                        .map(SalesOrder::getTotal)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                trends.add(AnalyticsDTO.TrendData.builder()
-                        .period(week)
-                        .sales(weekSales)
-                        .transactions((long) weekOrders.size())
-                        .build());
-            });
-        } else if ("monthly".equals(periodType)) {
-            // Group by month
-            Map<String, List<SalesOrder>> ordersByMonth = orders.stream()
-                    .collect(Collectors.groupingBy(order -> {
-                        LocalDate date = order.getOrderDate().toLocalDate();
-                        return date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
-                    }));
-
-            ordersByMonth.forEach((month, monthOrders) -> {
-                BigDecimal monthSales = monthOrders.stream()
-                        .map(SalesOrder::getTotal)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                trends.add(AnalyticsDTO.TrendData.builder()
-                        .period(month)
-                        .sales(monthSales)
-                        .transactions((long) monthOrders.size())
-                        .build());
-            });
+                return AnalyticsDTO.SalesSummary.builder()
+                                .date(startDate)
+                                .totalSales(totalSales)
+                                .transactionCount(transactionCount)
+                                .averageTicket(averageTicket)
+                                .taxCollected(taxCollected)
+                                .discountsGiven(discountsGiven)
+                                .build();
         }
 
-        return AnalyticsDTO.SalesTrendResponse.builder()
-                .trends(trends)
-                .periodType(periodType)
-                .build();
-    }
+        /**
+         * Get sales trends over a period
+         */
+        public AnalyticsDTO.SalesTrendResponse getSalesTrends(LocalDate startDate, LocalDate endDate, Long storeId,
+                        String periodType) {
+                LocalDateTime start = startDate.atStartOfDay();
+                LocalDateTime end = endDate.plusDays(1).atStartOfDay();
 
-    /**
-     * Get cashier performance metrics
-     */
-    public List<AnalyticsDTO.CashierPerformance> getCashierPerformance(LocalDate startDate, LocalDate endDate,
-            Long storeId) {
-        LocalDateTime start = startDate.atStartOfDay();
-        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
+                List<SalesOrder> orders = salesOrderRepository.findByOrderDateBetweenAndStoreIdAndStatus(
+                                start, end, storeId, OrderStatus.COMPLETED);
 
-        List<SalesOrder> orders = salesOrderRepository.findByOrderDateBetweenAndStoreIdAndStatus(
-                start, end, storeId, OrderStatus.COMPLETED);
+                List<AnalyticsDTO.TrendData> trends = new ArrayList<>();
 
-        Map<Long, List<SalesOrder>> ordersByCashier = orders.stream()
-                .collect(Collectors.groupingBy(order -> order.getCashier().getId()));
+                if ("daily".equals(periodType)) {
+                        // Group by day
+                        Map<LocalDate, List<SalesOrder>> ordersByDay = orders.stream()
+                                        .collect(Collectors.groupingBy(order -> order.getOrderDate().toLocalDate()));
 
-        List<AnalyticsDTO.CashierPerformance> performances = new ArrayList<>();
+                        ordersByDay.forEach((date, dayOrders) -> {
+                                BigDecimal daySales = dayOrders.stream()
+                                                .map(SalesOrder::getTotal)
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        ordersByCashier.forEach((cashierId, cashierOrders) -> {
-            BigDecimal totalSales = cashierOrders.stream()
-                    .map(SalesOrder::getTotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                trends.add(AnalyticsDTO.TrendData.builder()
+                                                .period(date.toString())
+                                                .sales(daySales)
+                                                .transactions((long) dayOrders.size())
+                                                .build());
+                        });
+                } else if ("weekly".equals(periodType)) {
+                        // Group by week
+                        Map<String, List<SalesOrder>> ordersByWeek = orders.stream()
+                                        .collect(Collectors.groupingBy(order -> {
+                                                LocalDate date = order.getOrderDate().toLocalDate();
+                                                return date.getYear() + "-W"
+                                                                + date.format(DateTimeFormatter.ofPattern("ww"));
+                                        }));
 
-            Long transactionCount = (long) cashierOrders.size();
-            BigDecimal averageTicket = transactionCount > 0
-                    ? totalSales.divide(BigDecimal.valueOf(transactionCount), 2, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
+                        ordersByWeek.forEach((week, weekOrders) -> {
+                                BigDecimal weekSales = weekOrders.stream()
+                                                .map(SalesOrder::getTotal)
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            String cashierName = cashierOrders.get(0).getCashier().getFirstName() + " " +
-                    cashierOrders.get(0).getCashier().getLastName();
+                                trends.add(AnalyticsDTO.TrendData.builder()
+                                                .period(week)
+                                                .sales(weekSales)
+                                                .transactions((long) weekOrders.size())
+                                                .build());
+                        });
+                } else if ("monthly".equals(periodType)) {
+                        // Group by month
+                        Map<String, List<SalesOrder>> ordersByMonth = orders.stream()
+                                        .collect(Collectors.groupingBy(order -> {
+                                                LocalDate date = order.getOrderDate().toLocalDate();
+                                                return date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                                        }));
 
-            performances.add(AnalyticsDTO.CashierPerformance.builder()
-                    .cashierId(cashierId)
-                    .cashierName(cashierName)
-                    .transactionCount(transactionCount)
-                    .totalSales(totalSales)
-                    .averageTicket(averageTicket)
-                    .averageTransactionTime(BigDecimal.ZERO) // TODO: Calculate if we track transaction duration
-                    .build());
-        });
+                        ordersByMonth.forEach((month, monthOrders) -> {
+                                BigDecimal monthSales = monthOrders.stream()
+                                                .map(SalesOrder::getTotal)
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return performances;
-    }
+                                trends.add(AnalyticsDTO.TrendData.builder()
+                                                .period(month)
+                                                .sales(monthSales)
+                                                .transactions((long) monthOrders.size())
+                                                .build());
+                        });
+                }
 
-    /**
-     * Get top selling products
-     */
-    public AnalyticsDTO.TopProductsResponse getTopSellingProducts(LocalDate startDate, LocalDate endDate, Long storeId,
-            String sortBy, Integer limit) {
-        LocalDateTime start = startDate.atStartOfDay();
-        LocalDateTime end = endDate.plusDays(1).atStartOfDay();
+                return AnalyticsDTO.SalesTrendResponse.builder()
+                                .trends(trends)
+                                .periodType(periodType)
+                                .build();
+        }
 
-        List<SalesOrder> orders = salesOrderRepository.findByOrderDateBetweenAndStoreIdAndStatus(
-                start, end, storeId, OrderStatus.COMPLETED);
+        /**
+         * Get cashier performance metrics
+         */
+        public List<AnalyticsDTO.CashierPerformance> getCashierPerformance(LocalDate startDate, LocalDate endDate,
+                        Long storeId) {
+                LocalDateTime start = startDate.atStartOfDay();
+                LocalDateTime end = endDate.plusDays(1).atStartOfDay();
 
-        // Flatten all order items
-        Map<Long, List<SalesOrderItem>> itemsByProduct = orders.stream()
-                .flatMap(order -> order.getItems().stream())
-                .collect(Collectors.groupingBy(item -> item.getProduct().getId()));
+                List<SalesOrder> orders = salesOrderRepository.findByOrderDateBetweenAndStoreIdAndStatus(
+                                start, end, storeId, OrderStatus.COMPLETED);
 
-        List<AnalyticsDTO.ProductAnalytics> productAnalytics = new ArrayList<>();
+                Map<Long, List<SalesOrder>> ordersByCashier = orders.stream()
+                                .collect(Collectors.groupingBy(order -> order.getCashier().getId()));
 
-        itemsByProduct.forEach((productId, items) -> {
-            Long quantitySold = items.stream()
-                    .mapToLong(SalesOrderItem::getQuantity)
-                    .sum();
+                List<AnalyticsDTO.CashierPerformance> performances = new ArrayList<>();
 
-            BigDecimal revenue = items.stream()
-                    .map(SalesOrderItem::getTotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                ordersByCashier.forEach((cashierId, cashierOrders) -> {
+                        BigDecimal totalSales = cashierOrders.stream()
+                                        .map(SalesOrder::getTotal)
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            Long transactionCount = items.stream()
-                    .map(item -> item.getId()) // Assuming each item is in a different transaction
-                    .distinct()
-                    .count();
+                        Long transactionCount = (long) cashierOrders.size();
+                        BigDecimal averageTicket = transactionCount > 0
+                                        ? totalSales.divide(BigDecimal.valueOf(transactionCount), 2,
+                                                        RoundingMode.HALF_UP)
+                                        : BigDecimal.ZERO;
 
-            String productName = items.get(0).getProduct().getName();
-            String sku = items.get(0).getProduct().getSku();
+                        String cashierName = cashierOrders.get(0).getCashier().getFirstName() + " " +
+                                        cashierOrders.get(0).getCashier().getLastName();
 
-            productAnalytics.add(AnalyticsDTO.ProductAnalytics.builder()
-                    .productId(productId)
-                    .productName(productName)
-                    .sku(sku)
-                    .quantitySold(quantitySold)
-                    .revenue(revenue)
-                    .transactionCount(transactionCount)
-                    .build());
-        });
+                        performances.add(AnalyticsDTO.CashierPerformance.builder()
+                                        .cashierId(cashierId)
+                                        .cashierName(cashierName)
+                                        .transactionCount(transactionCount)
+                                        .totalSales(totalSales)
+                                        .averageTicket(averageTicket)
+                                        .averageTransactionTime(BigDecimal.ZERO) // TODO: Calculate if we track
+                                                                                 // transaction duration
+                                        .build());
+                });
 
-        // Sort and limit
-        List<AnalyticsDTO.ProductAnalytics> sortedProducts = productAnalytics.stream()
-                .sorted((p1, p2) -> {
-                    if ("revenue".equals(sortBy)) {
-                        return p2.getRevenue().compareTo(p1.getRevenue());
-                    } else {
-                        return p2.getQuantitySold().compareTo(p1.getQuantitySold());
-                    }
-                })
-                .limit(limit != null ? limit : 10)
-                .collect(Collectors.toList());
+                return performances;
+        }
 
-        return AnalyticsDTO.TopProductsResponse.builder()
-                .products(sortedProducts)
-                .sortBy(sortBy)
-                .limit(limit)
-                .build();
-    }
+        /**
+         * Get top selling products
+         */
+        public AnalyticsDTO.TopProductsResponse getTopSellingProducts(LocalDate startDate, LocalDate endDate,
+                        Long storeId,
+                        String sortBy, Integer limit) {
+                LocalDateTime start = startDate.atStartOfDay();
+                LocalDateTime end = endDate.plusDays(1).atStartOfDay();
 
-    /**
-     * Get low stock alerts
-     */
-    public List<AnalyticsDTO.LowStockAlert> getLowStockAlerts(Long storeId, Integer threshold) {
-        List<Inventory> lowStockItems = inventoryRepository.findByStoreIdAndQuantityLessThan(
-                storeId, threshold != null ? threshold : 10);
+                List<SalesOrder> orders = salesOrderRepository.findByOrderDateBetweenAndStoreIdAndStatus(
+                                start, end, storeId, OrderStatus.COMPLETED);
 
-        return lowStockItems.stream()
-                .map(inventory -> AnalyticsDTO.LowStockAlert.builder()
-                        .productId(inventory.getProduct().getId())
-                        .productName(inventory.getProduct().getName())
-                        .sku(inventory.getProduct().getSku())
-                        .currentStock(inventory.getCurrentQuantity())
-                        .reorderLevel(10) // Default reorder level, can be enhanced later
-                        .storeName(inventory.getStore().getName())
-                        .build())
-                .collect(Collectors.toList());
-    }
+                // Flatten all order items
+                Map<Long, List<SalesOrderItem>> itemsByProduct = orders.stream()
+                                .flatMap(order -> order.getItems().stream())
+                                .collect(Collectors.groupingBy(item -> item.getProduct().getId()));
+
+                List<AnalyticsDTO.ProductAnalytics> productAnalytics = new ArrayList<>();
+
+                itemsByProduct.forEach((productId, items) -> {
+                        Long quantitySold = items.stream()
+                                        .mapToLong(SalesOrderItem::getQuantity)
+                                        .sum();
+
+                        BigDecimal revenue = items.stream()
+                                        .map(SalesOrderItem::getTotal)
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                        Long transactionCount = items.stream()
+                                        .map(item -> item.getId()) // Assuming each item is in a different transaction
+                                        .distinct()
+                                        .count();
+
+                        String productName = items.get(0).getProduct().getName();
+                        String sku = items.get(0).getProduct().getSku();
+
+                        productAnalytics.add(AnalyticsDTO.ProductAnalytics.builder()
+                                        .productId(productId)
+                                        .productName(productName)
+                                        .sku(sku)
+                                        .quantitySold(quantitySold)
+                                        .revenue(revenue)
+                                        .transactionCount(transactionCount)
+                                        .build());
+                });
+
+                // Sort and limit
+                List<AnalyticsDTO.ProductAnalytics> sortedProducts = productAnalytics.stream()
+                                .sorted((p1, p2) -> {
+                                        if ("revenue".equals(sortBy)) {
+                                                return p2.getRevenue().compareTo(p1.getRevenue());
+                                        } else {
+                                                return p2.getQuantitySold().compareTo(p1.getQuantitySold());
+                                        }
+                                })
+                                .limit(limit != null ? limit : 10)
+                                .collect(Collectors.toList());
+
+                return AnalyticsDTO.TopProductsResponse.builder()
+                                .products(sortedProducts)
+                                .sortBy(sortBy)
+                                .limit(limit)
+                                .build();
+        }
+
+        /**
+         * Get low stock alerts
+         */
+        public List<AnalyticsDTO.LowStockAlert> getLowStockAlerts(Long storeId, Integer threshold) {
+                List<Inventory> lowStockItems = inventoryRepository.findByStoreIdAndQuantityLessThan(
+                                storeId, threshold != null ? threshold : 10);
+
+                return lowStockItems.stream()
+                                .map(inventory -> AnalyticsDTO.LowStockAlert.builder()
+                                                .productId(inventory.getProduct().getId())
+                                                .productName(inventory.getProduct().getName())
+                                                .sku(inventory.getProduct().getSku())
+                                                .currentStock(inventory.getCurrentQuantity())
+                                                .reorderLevel(10) // Default reorder level, can be enhanced later
+                                                .storeName(inventory.getStore().getName())
+                                                .build())
+                                .collect(Collectors.toList());
+        }
 }

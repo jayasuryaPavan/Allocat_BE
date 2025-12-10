@@ -35,7 +35,7 @@ public class PaymentService {
      * Process a single payment
      */
     @Transactional
-    public Payment processPayment(Long orderId, PaymentType paymentType, BigDecimal amount, String transactionId) {
+    public Payment processPayment(long orderId, PaymentType paymentType, BigDecimal amount, String transactionId) {
         SalesOrder order = salesOrderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
@@ -60,6 +60,7 @@ public class PaymentService {
                 .processedAt(LocalDateTime.now())
                 .build();
 
+        @SuppressWarnings("null") // Spring Data JPA save() never returns null
         Payment savedPayment = paymentRepository.save(payment);
 
         // Update order payment status
@@ -73,7 +74,7 @@ public class PaymentService {
      * Process split payments
      */
     @Transactional
-    public List<Payment> processSplitPayment(Long orderId, List<PaymentRequest> paymentRequests) {
+    public List<Payment> processSplitPayment(long orderId, List<PaymentRequest> paymentRequests) {
         SalesOrder order = salesOrderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
 
@@ -100,7 +101,9 @@ public class PaymentService {
                     .notes("Split payment")
                     .build();
 
-            payments.add(paymentRepository.save(payment));
+            @SuppressWarnings("null") // Spring Data JPA save() never returns null
+            Payment savedPayment = paymentRepository.save(payment);
+            payments.add(savedPayment);
         }
 
         // Update order payment status
@@ -115,7 +118,7 @@ public class PaymentService {
      * Process a refund
      */
     @Transactional
-    public Payment processRefund(Long paymentId, BigDecimal amount, String reason) {
+    public Payment processRefund(long paymentId, BigDecimal amount, String reason) {
         Payment originalPayment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException("Payment not found: " + paymentId));
 
@@ -138,6 +141,7 @@ public class PaymentService {
                 .notes("Refund for payment #" + paymentId + ": " + reason)
                 .build();
 
+        @SuppressWarnings("null") // Spring Data JPA save() never returns null
         Payment savedRefund = paymentRepository.save(refund);
 
         // Update original payment status if fully refunded
@@ -153,14 +157,14 @@ public class PaymentService {
     /**
      * Get payment history for an order
      */
-    public List<Payment> getPaymentHistory(Long orderId) {
+    public List<Payment> getPaymentHistory(long orderId) {
         return paymentRepository.findBySalesOrderId(orderId);
     }
 
     /**
      * Get payment breakdown by type for a store and date
      */
-    public Map<PaymentType, BigDecimal> getPaymentBreakdown(Long storeId, LocalDate date) {
+    public Map<PaymentType, BigDecimal> getPaymentBreakdown(long storeId, LocalDate date) {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
@@ -180,7 +184,7 @@ public class PaymentService {
     /**
      * Get total payments for a store and date range
      */
-    public BigDecimal getTotalPayments(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
+    public BigDecimal getTotalPayments(long storeId, LocalDateTime startDate, LocalDateTime endDate) {
         return paymentRepository.getTotalPaymentsByStoreAndDateRange(storeId, startDate, endDate);
     }
 

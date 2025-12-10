@@ -22,7 +22,7 @@ public class ReceivedStockService {
 
     private final ProductRepository productRepository;
     private final ReceivedStockRepository receivedStockRepository;
-    
+
     public List<ReceivedStock> processReceivedStockList(List<ReceivedStockRequest> requests) {
         String uploadId = UUID.randomUUID().toString();
         List<ReceivedStock> receivedStocks = new ArrayList<>();
@@ -46,7 +46,7 @@ public class ReceivedStockService {
 
         return receivedStocks;
     }
-    
+
     private ReceivedStock parseReceivedStockRequest(ReceivedStockRequest request, String uploadId, int rowNumber) {
         // Find or create product with all available information
         Product product = findOrCreateProduct(request);
@@ -58,8 +58,9 @@ public class ReceivedStockService {
                 .productName(request.getProductName())
                 .expectedQuantity(request.getExpectedQuantity())
                 .unitPrice(request.getUnitPrice())
-                .totalValue(request.getUnitPrice() != null && request.getExpectedQuantity() != null ? 
-                    request.getUnitPrice().multiply(BigDecimal.valueOf(request.getExpectedQuantity())) : null)
+                .totalValue(request.getUnitPrice() != null && request.getExpectedQuantity() != null
+                        ? request.getUnitPrice().multiply(BigDecimal.valueOf(request.getExpectedQuantity()))
+                        : null)
                 .status(ReceivedStock.ReceivedStockStatus.PENDING)
                 .batchNumber(request.getBatchNumber())
                 .supplierName(request.getSupplierName())
@@ -71,7 +72,7 @@ public class ReceivedStockService {
         // Set quantities (with defaults)
         builder.receivedQuantity(request.getReceivedQuantity() != null ? request.getReceivedQuantity() : 0);
         builder.verifiedQuantity(request.getVerifiedQuantity() != null ? request.getVerifiedQuantity() : 0);
-        
+
         // Set optional quantity fields if provided
         if (request.getDamageQuantity() != null) {
             builder.damageQuantity(request.getDamageQuantity());
@@ -82,14 +83,14 @@ public class ReceivedStockService {
         if (request.getExcessQuantity() != null) {
             builder.excessQuantity(request.getExcessQuantity());
         }
-        
+
         // Set dates
         builder.deliveryDate(request.getDeliveryDate() != null ? request.getDeliveryDate() : LocalDateTime.now());
         builder.receivedDate(LocalDateTime.now());
         if (request.getExpectedDeliveryDate() != null) {
             builder.expectedDeliveryDate(request.getExpectedDeliveryDate());
         }
-        
+
         // Set personnel information if provided
         if (request.getReceivedBy() != null && !request.getReceivedBy().trim().isEmpty()) {
             builder.receivedBy(request.getReceivedBy());
@@ -97,7 +98,7 @@ public class ReceivedStockService {
         if (request.getVerifiedBy() != null && !request.getVerifiedBy().trim().isEmpty()) {
             builder.verifiedBy(request.getVerifiedBy());
         }
-        
+
         // Set quality issues if provided
         if (request.getQualityIssues() != null && !request.getQualityIssues().trim().isEmpty()) {
             builder.qualityIssues(request.getQualityIssues());
@@ -108,125 +109,128 @@ public class ReceivedStockService {
 
     private Product findOrCreateProduct(ReceivedStockRequest request) {
         String productCode = request.getProductCode();
-        
+
         // Try to find existing product by product code
         return productRepository.findByProductCode(productCode)
                 .map(existingProduct -> {
                     // Update existing product with new information if provided
                     boolean needsUpdate = false;
-                    
+
                     // Update basic information
-                    if (request.getProductName() != null && !request.getProductName().trim().isEmpty() && 
-                        !request.getProductName().equals(existingProduct.getName())) {
+                    if (request.getProductName() != null && !request.getProductName().trim().isEmpty() &&
+                            !request.getProductName().equals(existingProduct.getName())) {
                         existingProduct.setName(request.getProductName());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getDescription() != null && !request.getDescription().trim().isEmpty() && 
-                        !request.getDescription().equals(existingProduct.getDescription())) {
+
+                    if (request.getDescription() != null && !request.getDescription().trim().isEmpty() &&
+                            !request.getDescription().equals(existingProduct.getDescription())) {
                         existingProduct.setDescription(request.getDescription());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getCategory() != null && !request.getCategory().trim().isEmpty() && 
-                        !request.getCategory().equals(existingProduct.getCategory())) {
+
+                    if (request.getCategory() != null && !request.getCategory().trim().isEmpty() &&
+                            !request.getCategory().equals(existingProduct.getCategory())) {
                         existingProduct.setCategory(request.getCategory());
                         needsUpdate = true;
                     }
-                    
+
                     // Update pricing
-                    if (request.getUnitPrice() != null && !request.getUnitPrice().equals(existingProduct.getUnitPrice())) {
+                    if (request.getUnitPrice() != null
+                            && !request.getUnitPrice().equals(existingProduct.getUnitPrice())) {
                         existingProduct.setUnitPrice(request.getUnitPrice());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getUnitOfMeasure() != null && !request.getUnitOfMeasure().trim().isEmpty() && 
-                        !request.getUnitOfMeasure().equals(existingProduct.getUnitOfMeasure())) {
+
+                    if (request.getUnitOfMeasure() != null && !request.getUnitOfMeasure().trim().isEmpty() &&
+                            !request.getUnitOfMeasure().equals(existingProduct.getUnitOfMeasure())) {
                         existingProduct.setUnitOfMeasure(request.getUnitOfMeasure());
                         needsUpdate = true;
                     }
-                    
+
                     // Update supplier information
-                    if (request.getSupplierName() != null && !request.getSupplierName().trim().isEmpty() && 
-                        !request.getSupplierName().equals(existingProduct.getSupplierName())) {
+                    if (request.getSupplierName() != null && !request.getSupplierName().trim().isEmpty() &&
+                            !request.getSupplierName().equals(existingProduct.getSupplierName())) {
                         existingProduct.setSupplierName(request.getSupplierName());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getSupplierContact() != null && !request.getSupplierContact().trim().isEmpty() && 
-                        !request.getSupplierContact().equals(existingProduct.getSupplierContact())) {
+
+                    if (request.getSupplierContact() != null && !request.getSupplierContact().trim().isEmpty() &&
+                            !request.getSupplierContact().equals(existingProduct.getSupplierContact())) {
                         existingProduct.setSupplierContact(request.getSupplierContact());
                         needsUpdate = true;
                     }
-                    
+
                     // Update product identifiers
-                    if (request.getBarcode() != null && !request.getBarcode().trim().isEmpty() && 
-                        !request.getBarcode().equals(existingProduct.getBarcode())) {
+                    if (request.getBarcode() != null && !request.getBarcode().trim().isEmpty() &&
+                            !request.getBarcode().equals(existingProduct.getBarcode())) {
                         existingProduct.setBarcode(request.getBarcode());
                         needsUpdate = true;
                     }
-                    
+
                     // Update product attributes
-                    if (request.getBrand() != null && !request.getBrand().trim().isEmpty() && 
-                        !request.getBrand().equals(existingProduct.getBrand())) {
+                    if (request.getBrand() != null && !request.getBrand().trim().isEmpty() &&
+                            !request.getBrand().equals(existingProduct.getBrand())) {
                         existingProduct.setBrand(request.getBrand());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getModel() != null && !request.getModel().trim().isEmpty() && 
-                        !request.getModel().equals(existingProduct.getModel())) {
+
+                    if (request.getModel() != null && !request.getModel().trim().isEmpty() &&
+                            !request.getModel().equals(existingProduct.getModel())) {
                         existingProduct.setModel(request.getModel());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getColor() != null && !request.getColor().trim().isEmpty() && 
-                        !request.getColor().equals(existingProduct.getColor())) {
+
+                    if (request.getColor() != null && !request.getColor().trim().isEmpty() &&
+                            !request.getColor().equals(existingProduct.getColor())) {
                         existingProduct.setColor(request.getColor());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getSize() != null && !request.getSize().trim().isEmpty() && 
-                        !request.getSize().equals(existingProduct.getSize())) {
+
+                    if (request.getSize() != null && !request.getSize().trim().isEmpty() &&
+                            !request.getSize().equals(existingProduct.getSize())) {
                         existingProduct.setSize(request.getSize());
                         needsUpdate = true;
                     }
-                    
+
                     if (request.getWeight() != null && !request.getWeight().equals(existingProduct.getWeight())) {
                         existingProduct.setWeight(request.getWeight());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getDimensions() != null && !request.getDimensions().trim().isEmpty() && 
-                        !request.getDimensions().equals(existingProduct.getDimensions())) {
+
+                    if (request.getDimensions() != null && !request.getDimensions().trim().isEmpty() &&
+                            !request.getDimensions().equals(existingProduct.getDimensions())) {
                         existingProduct.setDimensions(request.getDimensions());
                         needsUpdate = true;
                     }
-                    
+
                     // Update stock levels
-                    if (request.getMinimumStockLevel() != null && 
-                        !request.getMinimumStockLevel().equals(existingProduct.getMinimumStockLevel())) {
+                    if (request.getMinimumStockLevel() != null &&
+                            !request.getMinimumStockLevel().equals(existingProduct.getMinimumStockLevel())) {
                         existingProduct.setMinimumStockLevel(request.getMinimumStockLevel());
                         needsUpdate = true;
                     }
-                    
-                    if (request.getMaximumStockLevel() != null && 
-                        !request.getMaximumStockLevel().equals(existingProduct.getMaximumStockLevel())) {
+
+                    if (request.getMaximumStockLevel() != null &&
+                            !request.getMaximumStockLevel().equals(existingProduct.getMaximumStockLevel())) {
                         existingProduct.setMaximumStockLevel(request.getMaximumStockLevel());
                         needsUpdate = true;
                     }
-                    
+
                     // Update notes
-                    if (request.getNotes() != null && !request.getNotes().trim().isEmpty() && 
-                        !request.getNotes().equals(existingProduct.getNotes())) {
+                    if (request.getNotes() != null && !request.getNotes().trim().isEmpty() &&
+                            !request.getNotes().equals(existingProduct.getNotes())) {
                         existingProduct.setNotes(request.getNotes());
                         needsUpdate = true;
                     }
-                    
+
                     if (needsUpdate) {
                         log.info("Updating existing product {} with new information", productCode);
-                        return productRepository.save(existingProduct);
+                        @SuppressWarnings("null") // Spring Data JPA save() never returns null
+                        Product savedProduct = productRepository.save(existingProduct);
+                        return savedProduct;
                     }
-                    
+
                     return existingProduct;
                 })
                 .orElseGet(() -> {
@@ -237,7 +241,7 @@ public class ReceivedStockService {
                             .name(request.getProductName())
                             .sku(productCode) // Set sku to productCode to avoid null constraint violation
                             .isActive(true);
-                    
+
                     // Set all optional fields if provided
                     if (request.getDescription() != null) {
                         productBuilder.description(request.getDescription());
@@ -287,8 +291,10 @@ public class ReceivedStockService {
                     if (request.getNotes() != null) {
                         productBuilder.notes(request.getNotes());
                     }
-                    
-                    return productRepository.save(productBuilder.build());
+
+                    @SuppressWarnings("null") // Spring Data JPA save() never returns null
+                    Product savedProduct = productRepository.save(productBuilder.build());
+                    return savedProduct;
                 });
     }
 
@@ -300,4 +306,3 @@ public class ReceivedStockService {
         return receivedStockRepository.findPendingReceivedStock();
     }
 }
-

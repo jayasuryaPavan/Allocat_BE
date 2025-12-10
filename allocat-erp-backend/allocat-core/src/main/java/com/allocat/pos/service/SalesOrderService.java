@@ -51,9 +51,11 @@ public class SalesOrderService {
     @Transactional
     public SalesOrder createSalesOrderFromCart(CartDTO cart, Long customerId, String notes) {
         // Fetch entities
-        Store store = storeRepository.findById(cart.getStoreId())
+        Store store = storeRepository
+                .findById(java.util.Objects.requireNonNull(cart.getStoreId(), "Store ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Store not found"));
-        User cashier = userRepository.findById(cart.getCashierId())
+        User cashier = userRepository
+                .findById(java.util.Objects.requireNonNull(cart.getCashierId(), "Cashier ID must not be null"))
                 .orElseThrow(() -> new RuntimeException("Cashier not found"));
 
         Customer customer = null;
@@ -63,7 +65,10 @@ public class SalesOrderService {
 
         Discount discount = null;
         if (cart.getDiscount() != null) {
-            discount = discountRepository.findById(cart.getDiscount().getId()).orElse(null);
+            Long discountId = cart.getDiscount().getId();
+            if (discountId != null) {
+                discount = discountRepository.findById(discountId).orElse(null);
+            }
         }
 
         // Generate order number
@@ -87,7 +92,8 @@ public class SalesOrderService {
 
         // Add items
         for (CartItemDTO cartItem : cart.getItems()) {
-            Product product = productRepository.findById(cartItem.getProductId())
+            Product product = productRepository
+                    .findById(java.util.Objects.requireNonNull(cartItem.getProductId(), "Product ID must not be null"))
                     .orElseThrow(() -> new RuntimeException("Product not found: " + cartItem.getProductId()));
 
             SalesOrderItem orderItem = SalesOrderItem.builder()
@@ -120,6 +126,7 @@ public class SalesOrderService {
             discountRepository.incrementUsageCount(discount.getId());
         }
 
+        @SuppressWarnings("null") // Spring Data JPA save() never returns null
         SalesOrder savedOrder = salesOrderRepository.save(salesOrder);
         log.info("Created sales order: {}", orderNo);
         return savedOrder;
@@ -128,7 +135,7 @@ public class SalesOrderService {
     /**
      * Get sales order by ID
      */
-    public SalesOrder getOrderById(Long id) {
+    public SalesOrder getOrderById(long id) {
         return salesOrderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Sales order not found: " + id));
     }
@@ -145,7 +152,7 @@ public class SalesOrderService {
      * Get orders by store and date range
      */
     public Page<SalesOrder> getOrdersByStoreAndDateRange(
-            Long storeId,
+            long storeId,
             LocalDateTime startDate,
             LocalDateTime endDate,
             Pageable pageable) {
@@ -155,7 +162,7 @@ public class SalesOrderService {
     /**
      * Get orders by customer
      */
-    public List<SalesOrder> getOrdersByCustomer(Long customerId) {
+    public List<SalesOrder> getOrdersByCustomer(long customerId) {
         return salesOrderRepository.findByCustomerId(customerId);
     }
 
@@ -163,7 +170,7 @@ public class SalesOrderService {
      * Cancel an order
      */
     @Transactional
-    public SalesOrder cancelOrder(Long orderId, String reason) {
+    public SalesOrder cancelOrder(long orderId, String reason) {
         SalesOrder order = getOrderById(orderId);
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
@@ -200,14 +207,14 @@ public class SalesOrderService {
     /**
      * Get total sales for a store in a date range
      */
-    public BigDecimal getTotalSales(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
+    public BigDecimal getTotalSales(long storeId, LocalDateTime startDate, LocalDateTime endDate) {
         return salesOrderRepository.getTotalSalesByStoreAndDateRange(storeId, startDate, endDate);
     }
 
     /**
      * Get order count for a store in a date range
      */
-    public Long getOrderCount(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
+    public Long getOrderCount(long storeId, LocalDateTime startDate, LocalDateTime endDate) {
         return salesOrderRepository.countOrdersByStoreAndDateRange(storeId, startDate, endDate);
     }
 
@@ -228,7 +235,7 @@ public class SalesOrderService {
      * so they can be added back to the cart
      */
     @Transactional
-    public SalesOrder resumeOrder(Long orderId) {
+    public SalesOrder resumeOrder(long orderId) {
         SalesOrder order = getOrderById(orderId);
 
         if (order.getStatus() != OrderStatus.HELD) {
@@ -245,7 +252,7 @@ public class SalesOrderService {
     /**
      * Get all held orders for a store
      */
-    public List<SalesOrder> getHeldOrders(Long storeId) {
+    public List<SalesOrder> getHeldOrders(long storeId) {
         return salesOrderRepository.findByStoreIdAndStatus(storeId, OrderStatus.HELD);
     }
 
@@ -262,9 +269,17 @@ public class SalesOrderService {
     public SalesOrder processReturn(com.allocat.pos.dto.ReturnRequest request) {
         SalesOrder originalOrder = getOrderById(request.getOriginalOrderId());
 
-        Store store = storeRepository.findById(request.getStoreId())
+        Long storeId = request.getStoreId();
+        if (storeId == null) {
+            throw new RuntimeException("Store ID must not be null");
+        }
+        Long cashierId = request.getCashierId();
+        if (cashierId == null) {
+            throw new RuntimeException("Cashier ID must not be null");
+        }
+        Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("Store not found"));
-        User cashier = userRepository.findById(request.getCashierId())
+        User cashier = userRepository.findById(cashierId)
                 .orElseThrow(() -> new RuntimeException("Cashier not found"));
 
         // Create return order

@@ -44,7 +44,7 @@ public class DiscountService {
      * Update an existing discount
      */
     @Transactional
-    public Discount updateDiscount(Long id, Discount discountDetails) {
+    public Discount updateDiscount(long id, Discount discountDetails) {
         Discount existingDiscount = discountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Discount not found: " + id));
 
@@ -101,7 +101,7 @@ public class DiscountService {
      * Deactivate a discount
      */
     @Transactional
-    public void deactivateDiscount(Long id) {
+    public void deactivateDiscount(long id) {
         Discount discount = discountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Discount not found: " + id));
 

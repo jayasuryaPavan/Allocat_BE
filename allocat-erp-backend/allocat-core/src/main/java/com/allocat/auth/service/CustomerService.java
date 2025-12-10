@@ -15,45 +15,53 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class CustomerService {
-    
+
     private final CustomerRepository customerRepository;
     private final StoreRepository storeRepository;
-    
+
     @Transactional
     public Customer createCustomer(Customer customer) {
-        log.info("Creating new customer with code: {} for store ID: {}", customer.getCustomerCode(), customer.getStore().getId());
-        
-        // Check if customer code already exists for this store
-        if (customerRepository.existsByCustomerCodeAndStoreId(customer.getCustomerCode(), customer.getStore().getId())) {
-            throw new IllegalArgumentException("Customer with code " + customer.getCustomerCode() + " already exists for this store");
-        }
-        
         // Verify store exists
-        Store store = storeRepository.findById(customer.getStore().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Store not found with ID: " + customer.getStore().getId()));
-        
+        Long storeId = customer.getStore() != null ? customer.getStore().getId() : null;
+        if (storeId == null) {
+            throw new IllegalArgumentException("Store ID must not be null");
+        }
+
+        log.info("Creating new customer with code: {} for store ID: {}", customer.getCustomerCode(), storeId);
+
+        // Check if customer code already exists for this store
+        if (customerRepository.existsByCustomerCodeAndStoreId(customer.getCustomerCode(), storeId)) {
+            throw new IllegalArgumentException(
+                    "Customer with code " + customer.getCustomerCode() + " already exists for this store");
+        }
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Store not found with ID: " + storeId));
+
         customer.setStore(store);
-        Customer savedCustomer = customerRepository.save(customer);
+        Customer savedCustomer = java.util.Objects.requireNonNull(customerRepository.save(customer));
         log.info("Customer created successfully with ID: {}", savedCustomer.getId());
         return savedCustomer;
     }
-    
+
     @Transactional
-    public Customer updateCustomer(Long customerId, Customer updatedCustomer) {
+    public Customer updateCustomer(long customerId, Customer updatedCustomer) {
         log.info("Updating customer with ID: {}", customerId);
-        
+
         Customer existingCustomer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new IllegalArgumentException("Customer not found with ID: " + customerId));
-        
+
         // Check if customer code is being changed and if it conflicts
-        if (updatedCustomer.getCustomerCode() != null && 
-            !updatedCustomer.getCustomerCode().equals(existingCustomer.getCustomerCode())) {
-            if (customerRepository.existsByCustomerCodeAndStoreId(updatedCustomer.getCustomerCode(), existingCustomer.getStore().getId())) {
-                throw new IllegalArgumentException("Customer with code " + updatedCustomer.getCustomerCode() + " already exists for this store");
+        if (updatedCustomer.getCustomerCode() != null &&
+                !updatedCustomer.getCustomerCode().equals(existingCustomer.getCustomerCode())) {
+            if (customerRepository.existsByCustomerCodeAndStoreId(updatedCustomer.getCustomerCode(),
+                    existingCustomer.getStore().getId())) {
+                throw new IllegalArgumentException(
+                        "Customer with code " + updatedCustomer.getCustomerCode() + " already exists for this store");
             }
             existingCustomer.setCustomerCode(updatedCustomer.getCustomerCode());
         }
-        
+
         // Update fields (only non-null values)
         if (updatedCustomer.getName() != null) {
             existingCustomer.setName(updatedCustomer.getName());
@@ -97,68 +105,54 @@ public class CustomerService {
         if (updatedCustomer.getIsActive() != null) {
             existingCustomer.setIsActive(updatedCustomer.getIsActive());
         }
-        
+
+        @SuppressWarnings("null") // Spring Data JPA save() never returns null
         Customer saved = customerRepository.save(existingCustomer);
         log.info("Customer updated successfully: {}", customerId);
         return saved;
     }
-    
+
     @Transactional
-    public void deleteCustomer(Long customerId) {
+    public void deleteCustomer(long customerId) {
         log.info("Deleting customer with ID: {}", customerId);
-        
+
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new IllegalArgumentException("Customer not found with ID: " + customerId));
-        
+
         // Soft delete by setting isActive to false
         customer.setIsActive(false);
         customerRepository.save(customer);
-        
+
         log.info("Customer soft deleted successfully: {}", customerId);
     }
-    
-    public Customer getCustomerById(Long customerId) {
+
+    public Customer getCustomerById(long customerId) {
         return customerRepository.findById(customerId)
                 .orElseThrow(() -> new IllegalArgumentException("Customer not found with ID: " + customerId));
     }
-    
+
     public Customer getCustomerByCode(String customerCode) {
         return customerRepository.findByCustomerCode(customerCode)
                 .orElseThrow(() -> new IllegalArgumentException("Customer not found with code: " + customerCode));
     }
-    
+
     public List<Customer> getAllCustomers() {
         return customerRepository.findAll();
     }
-    
+
     public List<Customer> getCustomersByStoreId(Long storeId) {
         return customerRepository.findByStoreId(storeId);
     }
-    
+
     public List<Customer> getActiveCustomersByStoreId(Long storeId) {
         return customerRepository.findByStoreIdAndIsActiveTrue(storeId);
     }
-    
+
     public List<Customer> getCustomersByInvoiceNumber(String invoiceNumber) {
         return customerRepository.findByInvoiceNumber(invoiceNumber);
     }
-    
+
     public List<Customer> searchCustomersByStore(Long storeId, String searchTerm) {
         return customerRepository.searchCustomersByStore(storeId, searchTerm);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
