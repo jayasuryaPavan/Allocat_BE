@@ -72,4 +72,17 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
                         @Param("storeId") Long storeId,
                         @Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate);
+
+        /**
+         * Get payment breakdown by type for a cashier within a date range (for shift reports)
+         */
+        @Query("SELECT p.paymentType, SUM(p.amount), COUNT(p) FROM Payment p " +
+                        "WHERE p.salesOrder.cashier.id = :cashierId " +
+                        "AND p.processedAt BETWEEN :startDate AND :endDate " +
+                        "AND p.status = 'COMPLETED' " +
+                        "GROUP BY p.paymentType")
+        List<Object[]> getPaymentBreakdownByCashier(
+                        @Param("cashierId") Long cashierId,
+                        @Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate);
 }

@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -95,4 +96,27 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
                         LocalDateTime endDate,
                         Long storeId,
                         OrderStatus status);
+
+        /**
+         * Find orders by cashier and date range (for shift reports)
+         */
+        @Query("SELECT s FROM SalesOrder s WHERE s.cashier.id = :cashierId " +
+                        "AND s.orderDate BETWEEN :startDate AND :endDate " +
+                        "AND s.status = :status")
+        List<SalesOrder> findByCashierIdAndDateRange(
+                        @Param("cashierId") Long cashierId,
+                        @Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate,
+                        @Param("status") OrderStatus status);
+
+        /**
+         * Find all completed orders for a store on a specific date
+         */
+        @Query("SELECT s FROM SalesOrder s WHERE s.store.id = :storeId " +
+                        "AND DATE(s.orderDate) = :date " +
+                        "AND s.status = :status")
+        List<SalesOrder> findByStoreIdAndDateAndStatus(
+                        @Param("storeId") Long storeId,
+                        @Param("date") LocalDate date,
+                        @Param("status") OrderStatus status);
 }

@@ -40,6 +40,14 @@ public class SalesOrderItem {
     @Column(name = "unit_price", precision = 10, scale = 2, nullable = false)
     private BigDecimal unitPrice;
 
+    /**
+     * Cost price at the time of sale (from inventory)
+     * Used for profit calculation
+     */
+    @Column(name = "cost_price", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal costPrice = BigDecimal.ZERO;
+
     @Column(name = "discount", precision = 10, scale = 2)
     @Builder.Default
     private BigDecimal discount = BigDecimal.ZERO;
@@ -64,5 +72,36 @@ public class SalesOrderItem {
         itemTotal = itemTotal.add(taxAmount);
         this.total = itemTotal;
         return itemTotal;
+    }
+
+    /**
+     * Calculate profit for this line item
+     * Profit = (Selling Price - Cost Price) * Quantity - Discount
+     */
+    public BigDecimal calculateProfit() {
+        if (costPrice == null || costPrice.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO; // Cannot calculate profit without cost price
+        }
+        BigDecimal profitPerUnit = unitPrice.subtract(costPrice);
+        BigDecimal grossProfit = profitPerUnit.multiply(BigDecimal.valueOf(quantity));
+        // Subtract discount from profit
+        BigDecimal netProfit = grossProfit.subtract(discount != null ? discount : BigDecimal.ZERO);
+        return netProfit;
+    }
+
+    /**
+     * Calculate profit margin percentage
+     */
+    public BigDecimal calculateProfitMargin() {
+        if (costPrice == null || costPrice.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal profit = calculateProfit();
+        BigDecimal revenue = total != null ? total : calculateTotal();
+        if (revenue.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return profit.multiply(BigDecimal.valueOf(100))
+                .divide(revenue, 2, java.math.RoundingMode.HALF_UP);
     }
 }

@@ -27,14 +27,59 @@ public class ReceivedStockService {
         String uploadId = UUID.randomUUID().toString();
         List<ReceivedStock> receivedStocks = new ArrayList<>();
 
+        // region agent log
+        try (var fw = new java.io.FileWriter("c:/Work Space/Allocat/.cursor/debug.log", true)) {
+            var log = new java.util.HashMap<String, Object>();
+            log.put("sessionId", "debug-session");
+            log.put("runId", "run1");
+            log.put("hypothesisId", "H-RS-1");
+            log.put("location", "ReceivedStockService:processReceivedStockList:start");
+            log.put("message", "Processing received stock list");
+            log.put("data", java.util.Map.of("requestCount", requests != null ? requests.size() : 0, "uploadId", uploadId));
+            log.put("timestamp", System.currentTimeMillis());
+            fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
+        } catch (Exception ignored) {}
+        // endregion
+
         int rowNumber = 1;
         for (ReceivedStockRequest request : requests) {
             try {
                 ReceivedStock receivedStock = parseReceivedStockRequest(request, uploadId, rowNumber);
                 receivedStocks.add(receivedStock);
+                // region agent log
+                try (var fw = new java.io.FileWriter("c:/Work Space/Allocat/.cursor/debug.log", true)) {
+                    var log = new java.util.HashMap<String, Object>();
+                    log.put("sessionId", "debug-session");
+                    log.put("runId", "run1");
+                    log.put("hypothesisId", "H-RS-2");
+                    log.put("location", "ReceivedStockService:processReceivedStockList:rowSuccess");
+                    log.put("message", "Parsed row");
+                    log.put("data", java.util.Map.of("row", rowNumber, "productCode", request.getProductCode(), "productName", request.getProductName()));
+                    log.put("timestamp", System.currentTimeMillis());
+                    fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
+                } catch (Exception ignored) {}
+                // endregion
                 rowNumber++;
             } catch (Exception e) {
-                log.error("Error processing received stock at row {}: {}", rowNumber, e.getMessage());
+                log.error("Error processing received stock at row {}: {}", rowNumber, e.getMessage(), e);
+                // region agent log
+                try (var fw = new java.io.FileWriter("c:/Work Space/Allocat/.cursor/debug.log", true)) {
+                    var log = new java.util.HashMap<String, Object>();
+                    log.put("sessionId", "debug-session");
+                    log.put("runId", "run1");
+                    log.put("hypothesisId", "H-RS-3");
+                    log.put("location", "ReceivedStockService:processReceivedStockList:rowError");
+                    log.put("message", "Row failed");
+                    log.put("data", java.util.Map.of(
+                            "row", rowNumber,
+                            "productCode", request != null ? request.getProductCode() : null,
+                            "productName", request != null ? request.getProductName() : null,
+                            "error", e.toString()
+                    ));
+                    log.put("timestamp", System.currentTimeMillis());
+                    fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
+                } catch (Exception ignored) {}
+                // endregion
             }
         }
 
@@ -42,6 +87,33 @@ public class ReceivedStockService {
         if (!receivedStocks.isEmpty()) {
             receivedStockRepository.saveAll(receivedStocks);
             log.info("Successfully processed {} records from JSON payload", receivedStocks.size());
+            // region agent log
+            try (var fw = new java.io.FileWriter("c:/Work Space/Allocat/.cursor/debug.log", true)) {
+                var log = new java.util.HashMap<String, Object>();
+                log.put("sessionId", "debug-session");
+                log.put("runId", "run1");
+                log.put("hypothesisId", "H-RS-4");
+                log.put("location", "ReceivedStockService:processReceivedStockList:saveSuccess");
+                log.put("message", "Saved received stocks");
+                log.put("data", java.util.Map.of("savedCount", receivedStocks.size(), "uploadId", uploadId));
+                log.put("timestamp", System.currentTimeMillis());
+                fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
+            } catch (Exception ignored) {}
+            // endregion
+        } else {
+            // region agent log
+            try (var fw = new java.io.FileWriter("c:/Work Space/Allocat/.cursor/debug.log", true)) {
+                var log = new java.util.HashMap<String, Object>();
+                log.put("sessionId", "debug-session");
+                log.put("runId", "run1");
+                log.put("hypothesisId", "H-RS-5");
+                log.put("location", "ReceivedStockService:processReceivedStockList:noSaves");
+                log.put("message", "No records saved");
+                log.put("data", java.util.Map.of("requestCount", requests != null ? requests.size() : 0));
+                log.put("timestamp", System.currentTimeMillis());
+                fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
+            } catch (Exception ignored) {}
+            // endregion
         }
 
         return receivedStocks;

@@ -96,10 +96,22 @@ public class SalesOrderService {
                     .findById(java.util.Objects.requireNonNull(cartItem.getProductId(), "Product ID must not be null"))
                     .orElseThrow(() -> new RuntimeException("Product not found: " + cartItem.getProductId()));
 
+            // Get cost price from inventory for profit calculation
+            BigDecimal costPrice = BigDecimal.ZERO;
+            try {
+                var inventory = inventoryService.getInventoryByProductId(product.getId());
+                if (inventory.isPresent() && inventory.get().getUnitCost() != null) {
+                    costPrice = inventory.get().getUnitCost();
+                }
+            } catch (Exception e) {
+                log.warn("Could not get cost price for product {}: {}", product.getId(), e.getMessage());
+            }
+
             SalesOrderItem orderItem = SalesOrderItem.builder()
                     .product(product)
                     .quantity(cartItem.getQuantity())
                     .unitPrice(cartItem.getUnitPrice())
+                    .costPrice(costPrice)  // Capture cost price for profit calculation
                     .discount(cartItem.getDiscount())
                     .taxRate(cartItem.getTaxRate())
                     .taxAmount(cartItem.getTaxAmount())
@@ -321,6 +333,7 @@ public class SalesOrderService {
                     .product(originalItem.getProduct())
                     .quantity(-itemDTO.getQuantity()) // Negative quantity
                     .unitPrice(unitPrice)
+                    .costPrice(originalItem.getCostPrice()) // Preserve cost price from original sale
                     .discount(BigDecimal.ZERO) // Simplified: no discount reversal for now
                     .taxRate(originalItem.getTaxRate())
                     .taxAmount(taxAmount.negate())
