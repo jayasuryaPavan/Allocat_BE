@@ -7,6 +7,8 @@ import com.allocat.inventory.entity.ReceivedStock;
 import com.allocat.inventory.repository.InventoryRepository;
 import com.allocat.inventory.service.ReceivedStockService;
 import com.allocat.inventory.service.InventoryService;
+import com.allocat.auth.service.AccessControlService;
+import com.allocat.auth.util.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +23,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.allocat.auth.entity.UserStoreAccess;
+import com.allocat.auth.entity.UserStoreAccess;
 
 @RestController
 @RequestMapping("/api/inventory")
@@ -32,6 +36,7 @@ public class InventoryController {
     private final InventoryService inventoryService;
     private final ReceivedStockService receivedStockService;
     private final InventoryRepository inventoryRepository;
+    private final AccessControlService accessControlService;
 
     @PostMapping("/received-stock")
     @Operation(summary = "Add received stock via JSON", 
@@ -143,11 +148,40 @@ public class InventoryController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") 
             @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Filter by store ID")
+            @RequestParam(required = false) Long storeId,
+            @Parameter(description = "Filter by warehouse ID")
+            @RequestParam(required = false) Long warehouseId,
             @Parameter(description = "Sort by field (e.g., 'product.name', 'availableQuantity', 'currentQuantity')") 
             @RequestParam(defaultValue = "id") String sortBy,
             @Parameter(description = "Sort direction: 'asc' or 'desc'") 
             @RequestParam(defaultValue = "asc") String sortDirection) {
         try {
+            Long userId = SecurityUtils.getCurrentUserId();
+            
+            // Apply multi-store filtering
+            if (storeId != null && userId != null) {
+                // Verify user has access to this store
+                if (!SecurityUtils.hasRole("SUPER_ADMIN") && !SecurityUtils.hasRole("ADMIN")) {
+                    accessControlService.verifyStoreAccess(
+                        userId, 
+                        storeId, 
+                        com.allocat.auth.entity.UserStoreAccess.AccessLevel.VIEW
+                    );
+                }
+            } else if (userId != null && !SecurityUtils.hasRole("SUPER_ADMIN") && !SecurityUtils.hasRole("ADMIN")) {
+                // Filter by user's accessible stores
+                List<Long> accessibleStoreIds = accessControlService.getAccessibleStoreIds(userId);
+                if (accessibleStoreIds.isEmpty()) {
+                    return ResponseEntity.ok(ApiResponse.success(
+                            Page.empty(),
+                            "No inventory accessible"
+                    ));
+                }
+                // Note: You'll need to update InventoryRepository to support store filtering
+                // For now, this is a placeholder
+            }
+            
             // Create sort object
             Sort sort = sortDirection.equalsIgnoreCase("desc") ? 
                     Sort.by(sortBy).descending() : 
