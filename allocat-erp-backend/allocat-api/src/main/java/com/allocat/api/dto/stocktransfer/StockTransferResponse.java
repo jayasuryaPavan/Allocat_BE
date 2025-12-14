@@ -94,33 +94,33 @@ public class StockTransferResponse {
         if (transfer.getRequestedBy() != null) {
             response.setRequestedById(transfer.getRequestedBy().getId());
             if (transfer.getRequestedBy().getFirstName() != null || transfer.getRequestedBy().getLastName() != null) {
-                response.setRequestedByName(
+                response.setRequestedByName((
                     (transfer.getRequestedBy().getFirstName() != null ? transfer.getRequestedBy().getFirstName() : "") +
                     " " +
                     (transfer.getRequestedBy().getLastName() != null ? transfer.getRequestedBy().getLastName() : "")
-                ).trim();
+                ).trim());
             }
         }
 
         if (transfer.getApprovedBy() != null) {
             response.setApprovedById(transfer.getApprovedBy().getId());
             if (transfer.getApprovedBy().getFirstName() != null || transfer.getApprovedBy().getLastName() != null) {
-                response.setApprovedByName(
+                response.setApprovedByName((
                     (transfer.getApprovedBy().getFirstName() != null ? transfer.getApprovedBy().getFirstName() : "") +
                     " " +
                     (transfer.getApprovedBy().getLastName() != null ? transfer.getApprovedBy().getLastName() : "")
-                ).trim();
+                ).trim());
             }
         }
 
         if (transfer.getReceivedBy() != null) {
             response.setReceivedById(transfer.getReceivedBy().getId());
             if (transfer.getReceivedBy().getFirstName() != null || transfer.getReceivedBy().getLastName() != null) {
-                response.setReceivedByName(
+                response.setReceivedByName((
                     (transfer.getReceivedBy().getFirstName() != null ? transfer.getReceivedBy().getFirstName() : "") +
                     " " +
                     (transfer.getReceivedBy().getLastName() != null ? transfer.getReceivedBy().getLastName() : "")
-                ).trim();
+                ).trim());
             }
         }
 

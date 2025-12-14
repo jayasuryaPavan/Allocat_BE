@@ -72,10 +72,13 @@ public class StockTransferService {
                 .build();
 
         if (request.getRequestedBy() != null) {
-            transfer.setRequestedBy(request.getRequestedBy());
+            transfer.setRequestedBy(User.builder().id(request.getRequestedBy()).build());
         }
 
         StockTransfer savedTransfer = stockTransferRepository.save(transfer);
+
+        final Long fromStoreId = fromStore.getId();
+        final Long fromWarehouseId = (fromWarehouse != null ? fromWarehouse.getId() : null);
 
         // Create transfer items
         List<StockTransferItem> items = request.getItems().stream()
@@ -84,8 +87,8 @@ public class StockTransferService {
                             .orElseThrow(() -> new RuntimeException("Product not found: " + itemRequest.getProductId()));
 
                     // Verify inventory availability
-                    verifyInventoryAvailability(product.getId(), fromStore.getId(), 
-                                              fromWarehouse != null ? fromWarehouse.getId() : null,
+                    verifyInventoryAvailability(product.getId(), fromStoreId,
+                                              fromWarehouseId,
                                               itemRequest.getQuantity());
 
                     return StockTransferItem.builder()

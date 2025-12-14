@@ -51,11 +51,11 @@ public class UserStoreAccessResponse {
             response.setUserId(access.getUser().getId());
             response.setUserEmail(access.getUser().getEmail());
             if (access.getUser().getFirstName() != null || access.getUser().getLastName() != null) {
-                response.setUserName(
+                response.setUserName((
                     (access.getUser().getFirstName() != null ? access.getUser().getFirstName() : "") +
                     " " +
                     (access.getUser().getLastName() != null ? access.getUser().getLastName() : "")
-                ).trim();
+                ).trim());
             }
         }
 
@@ -74,11 +74,11 @@ public class UserStoreAccessResponse {
         if (access.getGrantedBy() != null) {
             response.setGrantedById(access.getGrantedBy().getId());
             if (access.getGrantedBy().getFirstName() != null || access.getGrantedBy().getLastName() != null) {
-                response.setGrantedByName(
+                response.setGrantedByName((
                     (access.getGrantedBy().getFirstName() != null ? access.getGrantedBy().getFirstName() : "") +
                     " " +
                     (access.getGrantedBy().getLastName() != null ? access.getGrantedBy().getLastName() : "")
-                ).trim();
+                ).trim());
             }
         }
 
