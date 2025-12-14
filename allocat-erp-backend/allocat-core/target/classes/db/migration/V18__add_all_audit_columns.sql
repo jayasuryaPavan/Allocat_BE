@@ -3,49 +3,63 @@
 -- Required columns: created_at, created_by, updated_at, updated_by, deleted_at
 
 -- =====================================================
--- FUNCTION: Add audit columns to a table if missing
+-- FUNCTION: Add audit columns to a table if it exists and columns are missing
 -- =====================================================
 CREATE OR REPLACE FUNCTION add_audit_columns_if_missing(table_name_param TEXT)
 RETURNS VOID AS $$
 BEGIN
+    -- Check if table exists first
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = table_name_param
+    ) THEN
+        RAISE NOTICE 'Table % does not exist, skipping', table_name_param;
+        RETURN;
+    END IF;
+
     -- Add created_at column
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = table_name_param AND column_name = 'created_at'
+        WHERE table_schema = 'public' AND table_name = table_name_param AND column_name = 'created_at'
     ) THEN
         EXECUTE format('ALTER TABLE %I ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP', table_name_param);
+        RAISE NOTICE 'Added created_at to %', table_name_param;
     END IF;
 
     -- Add created_by column
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = table_name_param AND column_name = 'created_by'
+        WHERE table_schema = 'public' AND table_name = table_name_param AND column_name = 'created_by'
     ) THEN
         EXECUTE format('ALTER TABLE %I ADD COLUMN created_by BIGINT', table_name_param);
+        RAISE NOTICE 'Added created_by to %', table_name_param;
     END IF;
 
     -- Add updated_at column
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = table_name_param AND column_name = 'updated_at'
+        WHERE table_schema = 'public' AND table_name = table_name_param AND column_name = 'updated_at'
     ) THEN
         EXECUTE format('ALTER TABLE %I ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP', table_name_param);
+        RAISE NOTICE 'Added updated_at to %', table_name_param;
     END IF;
 
     -- Add updated_by column
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = table_name_param AND column_name = 'updated_by'
+        WHERE table_schema = 'public' AND table_name = table_name_param AND column_name = 'updated_by'
     ) THEN
         EXECUTE format('ALTER TABLE %I ADD COLUMN updated_by BIGINT', table_name_param);
+        RAISE NOTICE 'Added updated_by to %', table_name_param;
     END IF;
 
     -- Add deleted_at column
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
-        WHERE table_name = table_name_param AND column_name = 'deleted_at'
+        WHERE table_schema = 'public' AND table_name = table_name_param AND column_name = 'deleted_at'
     ) THEN
         EXECUTE format('ALTER TABLE %I ADD COLUMN deleted_at TIMESTAMP', table_name_param);
+        RAISE NOTICE 'Added deleted_at to %', table_name_param;
     END IF;
 END;
 $$ LANGUAGE plpgsql;
