@@ -1,5 +1,0 @@
-com\allocat\security\jwt\JwtAuthenticationEntryPoint.class
-com\allocat\security\jwt\JwtAccessDeniedHandler.class
-com\allocat\security\jwt\JwtUtil.class
-com\allocat\security\jwt\JwtAuthenticationFilter.class
-com\allocat\security\config\SecurityConfig.class
