@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 public class StartShiftRequest {
 
     @NotNull(message = "Store ID is required")
-    @Schema(description = "Store ID where the shift is starting", example = "1", required = true)
+    @Schema(description = "Store ID where the shift is starting", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long storeId;
 
     @Schema(description = "Starting cash amount in the register", example = "500.00")

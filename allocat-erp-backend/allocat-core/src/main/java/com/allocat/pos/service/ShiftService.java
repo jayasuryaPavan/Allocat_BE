@@ -9,7 +9,6 @@
 
 package com.allocat.pos.service;
 
-import com.allocat.auth.entity.User;
 import com.allocat.auth.repository.StoreRepository;
 import com.allocat.auth.repository.UserRepository;
 import com.allocat.pos.entity.SalesPersonLogin;
@@ -49,15 +48,17 @@ public class ShiftService {
      */
     @Transactional
     public Shift startShift(Long userId, Long storeId, BigDecimal startingCashAmount,
-                           LocalDateTime expectedStartTime, LocalDateTime expectedEndTime, String notes) {
+            LocalDateTime expectedStartTime, LocalDateTime expectedEndTime, String notes) {
         log.info("Starting shift for user: {} at store: {}", userId, storeId);
 
         if (!storeRepository.existsById(storeId)) {
             throw new RuntimeException("Store not found: " + storeId);
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+        // Validate user exists
+        if (!userRepository.existsById(userId)) {
+            throw new RuntimeException("User not found: " + userId);
+        }
 
         if (shiftRepository.hasActiveShift(userId)) {
             throw new RuntimeException("User already has an active shift");
@@ -92,7 +93,7 @@ public class ShiftService {
      */
     @Transactional
     public Shift endShift(Long shiftId, Long endedByUserId, BigDecimal endingCashAmount,
-                         BigDecimal expectedCashAmount, String notes) {
+            BigDecimal expectedCashAmount, String notes) {
         log.info("Ending shift: {} by user: {}", shiftId, endedByUserId);
 
         Shift shift = shiftRepository.findById(shiftId)
@@ -190,7 +191,7 @@ public class ShiftService {
 
     @Transactional
     public ShiftSwap createShiftSwap(Long requestedByUserId, Long originalShiftId, Long requestedToUserId,
-                                    LocalDate originalShiftDate, LocalDate swapShiftDate, String reason) {
+            LocalDate originalShiftDate, LocalDate swapShiftDate, String reason) {
         log.info("Creating shift swap request from user: {} to user: {} for shift: {}",
                 requestedByUserId, requestedToUserId, originalShiftId);
 
@@ -286,7 +287,7 @@ public class ShiftService {
                 .orElseThrow(() -> new RuntimeException("Shift swap not found: " + swapId));
 
         if (swap.getStatus() == ShiftSwap.SwapStatus.MANAGER_APPROVED ||
-            swap.getStatus() == ShiftSwap.SwapStatus.REJECTED) {
+                swap.getStatus() == ShiftSwap.SwapStatus.REJECTED) {
             throw new RuntimeException("Cannot reject swap. Current status: " + swap.getStatus());
         }
 
@@ -337,8 +338,8 @@ public class ShiftService {
 
     @Transactional
     public SalesPersonLogin recordSalesPersonLogin(Long userId, Long storeId, Long shiftId,
-                                                   SalesPersonLogin.LoginType loginType,
-                                                   String deviceInfo, String ipAddress, String location) {
+            SalesPersonLogin.LoginType loginType,
+            String deviceInfo, String ipAddress, String location) {
         SalesPersonLogin login = SalesPersonLogin.builder()
                 .userId(userId)
                 .storeId(storeId)

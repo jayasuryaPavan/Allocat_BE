@@ -20,7 +20,7 @@ import java.time.LocalDate;
 public class StartNewDayRequest {
 
     @NotNull(message = "Store ID is required")
-    @Schema(description = "Store ID", example = "1", required = true)
+    @Schema(description = "Store ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long storeId;
 
     @Schema(description = "Date for the new day (defaults to today)", example = "2024-01-15")

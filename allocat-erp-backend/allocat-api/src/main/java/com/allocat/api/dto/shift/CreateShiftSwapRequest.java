@@ -20,19 +20,19 @@ import java.time.LocalDate;
 public class CreateShiftSwapRequest {
 
     @NotNull(message = "Original shift ID is required")
-    @Schema(description = "ID of the shift to swap", example = "1", required = true)
+    @Schema(description = "ID of the shift to swap", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long originalShiftId;
 
     @NotNull(message = "Requested to user ID is required")
-    @Schema(description = "ID of the user to swap with", example = "5", required = true)
+    @Schema(description = "ID of the user to swap with", example = "5", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long requestedToUserId;
 
     @NotNull(message = "Original shift date is required")
-    @Schema(description = "Date of the original shift", example = "2024-01-20", required = true)
+    @Schema(description = "Date of the original shift", example = "2024-01-20", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate originalShiftDate;
 
     @NotNull(message = "Swap shift date is required")
-    @Schema(description = "Date of the shift to swap to", example = "2024-01-22", required = true)
+    @Schema(description = "Date of the shift to swap to", example = "2024-01-22", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate swapShiftDate;
 
     @Schema(description = "Reason for the swap request", example = "Family emergency")

@@ -19,7 +19,7 @@ import lombok.Data;
 public class SalesPersonLoginRequest {
 
     @NotNull(message = "Store ID is required")
-    @Schema(description = "Store ID", example = "1", required = true)
+    @Schema(description = "Store ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long storeId;
 
     @Schema(description = "Shift ID if logging in for a specific shift")

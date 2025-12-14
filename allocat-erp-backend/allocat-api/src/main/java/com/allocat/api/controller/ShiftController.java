@@ -16,7 +16,6 @@ import com.allocat.pos.entity.Shift;
 import com.allocat.pos.entity.ShiftSwap;
 import com.allocat.pos.service.ShiftService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

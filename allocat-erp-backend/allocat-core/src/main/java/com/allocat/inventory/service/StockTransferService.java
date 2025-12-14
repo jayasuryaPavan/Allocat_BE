@@ -21,19 +21,18 @@ public class StockTransferService {
 
     private final StockTransferRepository stockTransferRepository;
     private final StockTransferItemRepository stockTransferItemRepository;
-    private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
     private final WarehouseRepository warehouseRepository;
     private final ProductRepository productRepository;
 
     @Transactional
     public StockTransfer createTransfer(CreateTransferRequest request) {
-        log.info("Creating stock transfer from store {} to store {}", 
-                 request.getFromStoreId(), request.getToStoreId());
+        log.info("Creating stock transfer from store {} to store {}",
+                request.getFromStoreId(), request.getToStoreId());
 
         Store fromStore = storeRepository.findById(request.getFromStoreId())
                 .orElseThrow(() -> new RuntimeException("From store not found: " + request.getFromStoreId()));
-        
+
         Store toStore = storeRepository.findById(request.getToStoreId())
                 .orElseThrow(() -> new RuntimeException("To store not found: " + request.getToStoreId()));
 
@@ -84,12 +83,13 @@ public class StockTransferService {
         List<StockTransferItem> items = request.getItems().stream()
                 .map(itemRequest -> {
                     Product product = productRepository.findById(itemRequest.getProductId())
-                            .orElseThrow(() -> new RuntimeException("Product not found: " + itemRequest.getProductId()));
+                            .orElseThrow(
+                                    () -> new RuntimeException("Product not found: " + itemRequest.getProductId()));
 
                     // Verify inventory availability
                     verifyInventoryAvailability(product.getId(), fromStoreId,
-                                              fromWarehouseId,
-                                              itemRequest.getQuantity());
+                            fromWarehouseId,
+                            itemRequest.getQuantity());
 
                     return StockTransferItem.builder()
                             .transfer(savedTransfer)
@@ -154,8 +154,8 @@ public class StockTransferService {
     }
 
     @Transactional
-    public StockTransfer receiveTransfer(Long transferId, Long receivedByUserId, 
-                                        List<ReceiveItemRequest> receivedItems) {
+    public StockTransfer receiveTransfer(Long transferId, Long receivedByUserId,
+            List<ReceiveItemRequest> receivedItems) {
         log.info("Receiving stock transfer: {}", transferId);
 
         StockTransfer transfer = stockTransferRepository.findById(transferId)
@@ -174,9 +174,9 @@ public class StockTransferService {
 
             if (receiveRequest != null) {
                 item.setReceivedQuantity(receiveRequest.getReceivedQuantity());
-                item.setDamagedQuantity(receiveRequest.getDamagedQuantity() != null ? 
-                                       receiveRequest.getDamagedQuantity() : 0);
-                
+                item.setDamagedQuantity(
+                        receiveRequest.getDamagedQuantity() != null ? receiveRequest.getDamagedQuantity() : 0);
+
                 addInventoryForTransfer(item, transfer, receiveRequest);
             }
         }
@@ -185,9 +185,8 @@ public class StockTransferService {
         boolean fullyReceived = transfer.getItems().stream()
                 .allMatch(item -> item.getReceivedQuantity() + item.getDamagedQuantity() >= item.getQuantity());
 
-        transfer.setStatus(fullyReceived ? 
-                          StockTransfer.TransferStatus.RECEIVED : 
-                          StockTransfer.TransferStatus.PARTIALLY_RECEIVED);
+        transfer.setStatus(fullyReceived ? StockTransfer.TransferStatus.RECEIVED
+                : StockTransfer.TransferStatus.PARTIALLY_RECEIVED);
         transfer.setReceivedBy(User.builder().id(receivedByUserId).build());
         transfer.setReceivedDate(LocalDateTime.now());
         transfer.setActualDeliveryDate(LocalDateTime.now());
@@ -203,7 +202,7 @@ public class StockTransferService {
                 .orElseThrow(() -> new RuntimeException("Transfer not found: " + transferId));
 
         if (transfer.getStatus() == StockTransfer.TransferStatus.RECEIVED ||
-            transfer.getStatus() == StockTransfer.TransferStatus.CANCELLED) {
+                transfer.getStatus() == StockTransfer.TransferStatus.CANCELLED) {
             throw new RuntimeException("Cannot cancel transfer in status: " + transfer.getStatus());
         }
 
@@ -216,8 +215,8 @@ public class StockTransferService {
 
         transfer.setStatus(StockTransfer.TransferStatus.CANCELLED);
         if (reason != null) {
-            transfer.setNotes((transfer.getNotes() != null ? transfer.getNotes() + "\n" : "") + 
-                            "Cancelled: " + reason);
+            transfer.setNotes((transfer.getNotes() != null ? transfer.getNotes() + "\n" : "") +
+                    "Cancelled: " + reason);
         }
 
         return stockTransferRepository.save(transfer);
@@ -242,12 +241,12 @@ public class StockTransferService {
 
     // Helper methods
     private String generateTransferNumber(Long fromStoreId, Long toStoreId) {
-        return String.format("TR-%03d-%03d-%s", fromStoreId, toStoreId, 
-                           System.currentTimeMillis() / 1000);
+        return String.format("TR-%03d-%03d-%s", fromStoreId, toStoreId,
+                System.currentTimeMillis() / 1000);
     }
 
     private StockTransfer.TransferType determineTransferType(Store fromStore, Store toStore,
-                                                           Warehouse fromWarehouse, Warehouse toWarehouse) {
+            Warehouse fromWarehouse, Warehouse toWarehouse) {
         if (fromWarehouse != null && toWarehouse != null) {
             return StockTransfer.TransferType.WAREHOUSE_TO_WAREHOUSE;
         } else if (fromWarehouse != null) {
@@ -262,8 +261,8 @@ public class StockTransferService {
     private void verifyInventoryAvailability(Long productId, Long storeId, Long warehouseId, Integer quantity) {
         // Implementation depends on your inventory structure
         // This is a placeholder - implement based on your actual inventory model
-        log.debug("Verifying inventory availability for product {} at store {} warehouse {}", 
-                 productId, storeId, warehouseId);
+        log.debug("Verifying inventory availability for product {} at store {} warehouse {}",
+                productId, storeId, warehouseId);
     }
 
     private void reserveInventoryForTransfer(StockTransferItem item, StockTransfer transfer) {
@@ -278,8 +277,8 @@ public class StockTransferService {
         // Implementation needed
     }
 
-    private void addInventoryForTransfer(StockTransferItem item, StockTransfer transfer, 
-                                         ReceiveItemRequest receiveRequest) {
+    private void addInventoryForTransfer(StockTransferItem item, StockTransfer transfer,
+            ReceiveItemRequest receiveRequest) {
         // Add inventory to destination
         log.debug("Adding inventory for transfer item: {}", item.getId());
         // Implementation needed
@@ -307,40 +306,122 @@ public class StockTransferService {
         private List<TransferItemRequest> items;
 
         // Getters and setters
-        public Long getFromStoreId() { return fromStoreId; }
-        public void setFromStoreId(Long fromStoreId) { this.fromStoreId = fromStoreId; }
-        public Long getToStoreId() { return toStoreId; }
-        public void setToStoreId(Long toStoreId) { this.toStoreId = toStoreId; }
-        public Long getFromWarehouseId() { return fromWarehouseId; }
-        public void setFromWarehouseId(Long fromWarehouseId) { this.fromWarehouseId = fromWarehouseId; }
-        public Long getToWarehouseId() { return toWarehouseId; }
-        public void setToWarehouseId(Long toWarehouseId) { this.toWarehouseId = toWarehouseId; }
-        public Long getFromLocationId() { return fromLocationId; }
-        public void setFromLocationId(Long fromLocationId) { this.fromLocationId = fromLocationId; }
-        public Long getToLocationId() { return toLocationId; }
-        public void setToLocationId(Long toLocationId) { this.toLocationId = toLocationId; }
-        public StockTransfer.Priority getPriority() { return priority; }
-        public void setPriority(StockTransfer.Priority priority) { this.priority = priority; }
-        public String getNotes() { return notes; }
-        public void setNotes(String notes) { this.notes = notes; }
-        public LocalDateTime getEstimatedDeliveryDate() { return estimatedDeliveryDate; }
-        public void setEstimatedDeliveryDate(LocalDateTime estimatedDeliveryDate) { this.estimatedDeliveryDate = estimatedDeliveryDate; }
-        public String getShippingMethod() { return shippingMethod; }
-        public void setShippingMethod(String shippingMethod) { this.shippingMethod = shippingMethod; }
-        public Long getRequestedBy() { return requestedBy; }
-        public void setRequestedBy(Long requestedBy) { this.requestedBy = requestedBy; }
-        public List<TransferItemRequest> getItems() { return items; }
-        public void setItems(List<TransferItemRequest> items) { this.items = items; }
+        public Long getFromStoreId() {
+            return fromStoreId;
+        }
+
+        public void setFromStoreId(Long fromStoreId) {
+            this.fromStoreId = fromStoreId;
+        }
+
+        public Long getToStoreId() {
+            return toStoreId;
+        }
+
+        public void setToStoreId(Long toStoreId) {
+            this.toStoreId = toStoreId;
+        }
+
+        public Long getFromWarehouseId() {
+            return fromWarehouseId;
+        }
+
+        public void setFromWarehouseId(Long fromWarehouseId) {
+            this.fromWarehouseId = fromWarehouseId;
+        }
+
+        public Long getToWarehouseId() {
+            return toWarehouseId;
+        }
+
+        public void setToWarehouseId(Long toWarehouseId) {
+            this.toWarehouseId = toWarehouseId;
+        }
+
+        public Long getFromLocationId() {
+            return fromLocationId;
+        }
+
+        public void setFromLocationId(Long fromLocationId) {
+            this.fromLocationId = fromLocationId;
+        }
+
+        public Long getToLocationId() {
+            return toLocationId;
+        }
+
+        public void setToLocationId(Long toLocationId) {
+            this.toLocationId = toLocationId;
+        }
+
+        public StockTransfer.Priority getPriority() {
+            return priority;
+        }
+
+        public void setPriority(StockTransfer.Priority priority) {
+            this.priority = priority;
+        }
+
+        public String getNotes() {
+            return notes;
+        }
+
+        public void setNotes(String notes) {
+            this.notes = notes;
+        }
+
+        public LocalDateTime getEstimatedDeliveryDate() {
+            return estimatedDeliveryDate;
+        }
+
+        public void setEstimatedDeliveryDate(LocalDateTime estimatedDeliveryDate) {
+            this.estimatedDeliveryDate = estimatedDeliveryDate;
+        }
+
+        public String getShippingMethod() {
+            return shippingMethod;
+        }
+
+        public void setShippingMethod(String shippingMethod) {
+            this.shippingMethod = shippingMethod;
+        }
+
+        public Long getRequestedBy() {
+            return requestedBy;
+        }
+
+        public void setRequestedBy(Long requestedBy) {
+            this.requestedBy = requestedBy;
+        }
+
+        public List<TransferItemRequest> getItems() {
+            return items;
+        }
+
+        public void setItems(List<TransferItemRequest> items) {
+            this.items = items;
+        }
     }
 
     public static class TransferItemRequest {
         private Long productId;
         private Integer quantity;
 
-        public Long getProductId() { return productId; }
-        public void setProductId(Long productId) { this.productId = productId; }
-        public Integer getQuantity() { return quantity; }
-        public void setQuantity(Integer quantity) { this.quantity = quantity; }
+        public Long getProductId() {
+            return productId;
+        }
+
+        public void setProductId(Long productId) {
+            this.productId = productId;
+        }
+
+        public Integer getQuantity() {
+            return quantity;
+        }
+
+        public void setQuantity(Integer quantity) {
+            this.quantity = quantity;
+        }
     }
 
     public static class ReceiveItemRequest {
@@ -348,11 +429,28 @@ public class StockTransferService {
         private Integer receivedQuantity;
         private Integer damagedQuantity;
 
-        public Long getTransferItemId() { return transferItemId; }
-        public void setTransferItemId(Long transferItemId) { this.transferItemId = transferItemId; }
-        public Integer getReceivedQuantity() { return receivedQuantity; }
-        public void setReceivedQuantity(Integer receivedQuantity) { this.receivedQuantity = receivedQuantity; }
-        public Integer getDamagedQuantity() { return damagedQuantity; }
-        public void setDamagedQuantity(Integer damagedQuantity) { this.damagedQuantity = damagedQuantity; }
+        public Long getTransferItemId() {
+            return transferItemId;
+        }
+
+        public void setTransferItemId(Long transferItemId) {
+            this.transferItemId = transferItemId;
+        }
+
+        public Integer getReceivedQuantity() {
+            return receivedQuantity;
+        }
+
+        public void setReceivedQuantity(Integer receivedQuantity) {
+            this.receivedQuantity = receivedQuantity;
+        }
+
+        public Integer getDamagedQuantity() {
+            return damagedQuantity;
+        }
+
+        public void setDamagedQuantity(Integer damagedQuantity) {
+            this.damagedQuantity = damagedQuantity;
+        }
     }
 }

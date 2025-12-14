@@ -1,6 +1,5 @@
 package com.allocat.inventory.entity;
 
-import com.allocat.inventory.entity.Product;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -24,12 +23,12 @@ public class StockTransferItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transfer_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "items"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "items" })
     private StockTransfer transfer;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private Product product;
 
     @Column(name = "quantity", nullable = false)

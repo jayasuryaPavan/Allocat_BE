@@ -35,11 +35,18 @@ public class ReceivedStockService {
             log.put("hypothesisId", "H-RS-1");
             log.put("location", "ReceivedStockService:processReceivedStockList:start");
             log.put("message", "Processing received stock list");
-            log.put("data", java.util.Map.of("requestCount", requests != null ? requests.size() : 0, "uploadId", uploadId));
+            log.put("data",
+                    java.util.Map.of("requestCount", requests != null ? requests.size() : 0, "uploadId", uploadId));
             log.put("timestamp", System.currentTimeMillis());
             fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         // endregion
+
+        if (requests == null) {
+            log.warn("Received null requests list");
+            return receivedStocks;
+        }
 
         int rowNumber = 1;
         for (ReceivedStockRequest request : requests) {
@@ -54,10 +61,12 @@ public class ReceivedStockService {
                     log.put("hypothesisId", "H-RS-2");
                     log.put("location", "ReceivedStockService:processReceivedStockList:rowSuccess");
                     log.put("message", "Parsed row");
-                    log.put("data", java.util.Map.of("row", rowNumber, "productCode", request.getProductCode(), "productName", request.getProductName()));
+                    log.put("data", java.util.Map.of("row", rowNumber, "productCode", request.getProductCode(),
+                            "productName", request.getProductName()));
                     log.put("timestamp", System.currentTimeMillis());
                     fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
                 // endregion
                 rowNumber++;
             } catch (Exception e) {
@@ -74,11 +83,11 @@ public class ReceivedStockService {
                             "row", rowNumber,
                             "productCode", request != null ? request.getProductCode() : null,
                             "productName", request != null ? request.getProductName() : null,
-                            "error", e.toString()
-                    ));
+                            "error", e.toString()));
                     log.put("timestamp", System.currentTimeMillis());
                     fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
                 // endregion
             }
         }
@@ -98,7 +107,8 @@ public class ReceivedStockService {
                 log.put("data", java.util.Map.of("savedCount", receivedStocks.size(), "uploadId", uploadId));
                 log.put("timestamp", System.currentTimeMillis());
                 fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             // endregion
         } else {
             // region agent log
@@ -112,7 +122,8 @@ public class ReceivedStockService {
                 log.put("data", java.util.Map.of("requestCount", requests != null ? requests.size() : 0));
                 log.put("timestamp", System.currentTimeMillis());
                 fw.write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(log) + "\n");
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             // endregion
         }
 

@@ -20,7 +20,7 @@ import java.math.BigDecimal;
 public class EndShiftRequest {
 
     @NotNull(message = "Ending cash amount is required")
-    @Schema(description = "Ending cash amount in the register", example = "1523.50", required = true)
+    @Schema(description = "Ending cash amount in the register", example = "1523.50", requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal endingCashAmount;
 
     @Schema(description = "Expected cash amount", example = "1520.00")
