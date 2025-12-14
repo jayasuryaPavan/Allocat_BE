@@ -12,15 +12,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StoreAccessRequest {
-    
+
     @Schema(example = "1", description = "Store ID")
     private Long storeId;
-    
+
     @Schema(example = "ST001", description = "Store code (alternative to storeId)")
     private String storeCode;
-    
-    @Schema(example = "ACCESS2024!", description = "Access code for store verification", required = true)
+
+    @Schema(example = "ACCESS2024!", description = "Access code for store verification", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Access code is required")
     private String accessCode;
 }
-

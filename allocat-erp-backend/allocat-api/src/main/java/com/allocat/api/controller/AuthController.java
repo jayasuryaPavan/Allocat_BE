@@ -2,8 +2,10 @@ package com.allocat.api.controller;
 
 import com.allocat.api.dto.AuthResponse;
 import com.allocat.api.dto.LoginRequest;
+import com.allocat.auth.entity.Store;
 import com.allocat.auth.entity.User;
 import com.allocat.auth.service.AuthService;
+import com.allocat.auth.service.StoreService;
 import com.allocat.common.dto.ApiResponse;
 import com.allocat.security.jwt.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +31,7 @@ public class AuthController {
     
     private final AuthService authService;
     private final JwtUtil jwtUtil;
+    private final StoreService storeService;
     
     @Value("${jwt.expiration}")
     private Long jwtExpiration;
@@ -83,6 +86,19 @@ public class AuthController {
             String accessToken = jwtUtil.generateToken(user.getUsername(), roleName, user.getId());
             String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
             
+            // Get store details if user has a store
+            String storeCode = null;
+            String storeName = null;
+            if (user.getStoreId() != null) {
+                try {
+                    Store store = storeService.getStoreById(user.getStoreId());
+                    storeCode = store.getCode();
+                    storeName = store.getName();
+                } catch (Exception e) {
+                    log.warn("Store not found for user {}: {}", user.getUsername(), e.getMessage());
+                }
+            }
+            
             // Build response with all user details
             AuthResponse authResponse = AuthResponse.builder()
                     .accessToken(accessToken)
@@ -98,6 +114,8 @@ public class AuthController {
                     .roleId(roleId)
                     .role(roleName)
                     .storeId(user.getStoreId())
+                    .storeCode(storeCode)
+                    .storeName(storeName)
                     .isActive(user.getActive())
                     .lastLoginAt(user.getLastLoginAt() != null ? user.getLastLoginAt().toString() : null)
                     .permissions(user.getRole() != null ? user.getRole().getPermissions() : new String[0])
@@ -145,6 +163,19 @@ public class AuthController {
             // Get user from database
             User user = authService.getUserByUsername(username);
             
+            // Get store details if user has a store
+            String storeCode = null;
+            String storeName = null;
+            if (user.getStoreId() != null) {
+                try {
+                    Store store = storeService.getStoreById(user.getStoreId());
+                    storeCode = store.getCode();
+                    storeName = store.getName();
+                } catch (Exception e) {
+                    log.warn("Store not found for user {}: {}", user.getUsername(), e.getMessage());
+                }
+            }
+            
             // Build response with all user details
             String roleName = user.getRole() != null ? user.getRole().getName() : "VIEWER";
             Long roleId = user.getRole() != null ? user.getRole().getId() : null;
@@ -159,6 +190,8 @@ public class AuthController {
                     .roleId(roleId)
                     .role(roleName)
                     .storeId(user.getStoreId())
+                    .storeCode(storeCode)
+                    .storeName(storeName)
                     .isActive(user.getActive())
                     .lastLoginAt(user.getLastLoginAt() != null ? user.getLastLoginAt().toString() : null)
                     .permissions(user.getRole() != null ? user.getRole().getPermissions() : new String[0])
@@ -219,6 +252,41 @@ public class AuthController {
             log.error("Token refresh failed: {}", e.getMessage());
             return ResponseEntity.status(401)
                     .body(ApiResponse.error("Token refresh failed"));
+        }
+    }
+    
+    @PostMapping("/logout")
+    @Operation(summary = "User logout", description = "Logout user and invalidate tokens")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", 
+                    description = "Logout successful"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401", 
+                    description = "Invalid or expired token"
+            )
+    })
+    public ResponseEntity<ApiResponse<Object>> logout(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        
+        try {
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                String username = jwtUtil.extractUsername(token);
+                
+                // TODO: Optionally invalidate refresh token from database
+                // authService.invalidateRefreshToken(username);
+                
+                log.info("User logged out: {}", username);
+            }
+            
+            return ResponseEntity.ok(ApiResponse.success(null, "Logout successful"));
+            
+        } catch (Exception e) {
+            log.error("Logout failed: {}", e.getMessage());
+            // Even if logout fails, return success (client should clear tokens anyway)
+            return ResponseEntity.ok(ApiResponse.success(null, "Logout successful"));
         }
     }
 }

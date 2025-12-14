@@ -21,6 +21,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findBySku(String sku);
 
     List<Product> findByIsActiveTrue();
+    
+    Page<Product> findByIsActiveTrue(Pageable pageable);
 
     Page<Product> findByCategory(String category, Pageable pageable);
 

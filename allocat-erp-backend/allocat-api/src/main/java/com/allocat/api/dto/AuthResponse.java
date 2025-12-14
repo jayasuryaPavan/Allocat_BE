@@ -52,6 +52,12 @@ public class AuthResponse {
     @Schema(description = "User's store ID")
     private Long storeId;
     
+    @Schema(description = "User's store code")
+    private String storeCode;
+    
+    @Schema(description = "User's store name")
+    private String storeName;
+    
     @Schema(description = "Whether the user account is active")
     private Boolean isActive;
     

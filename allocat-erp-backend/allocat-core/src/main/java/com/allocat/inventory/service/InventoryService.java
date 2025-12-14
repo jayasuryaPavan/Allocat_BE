@@ -6,7 +6,6 @@ import com.allocat.inventory.entity.Inventory;
 import com.allocat.inventory.entity.Product;
 import com.allocat.inventory.entity.ReceivedStock;
 import com.allocat.inventory.repository.InventoryRepository;
-import com.allocat.inventory.repository.ProductRepository;
 import com.allocat.inventory.repository.ReceivedStockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,12 +23,11 @@ import java.util.Optional;
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
-    private final ProductRepository productRepository;
     private final ReceivedStockRepository receivedStockRepository;
     private final StoreRepository storeRepository;
 
     @Transactional
-    public Inventory verifyAndAddToInventory(Long receivedStockId, Integer verifiedQuantity, String verifiedBy) {
+    public Inventory verifyAndAddToInventory(long receivedStockId, Integer verifiedQuantity, String verifiedBy) {
         ReceivedStock receivedStock = receivedStockRepository.findById(receivedStockId)
                 .orElseThrow(() -> new RuntimeException("Received stock not found"));
 
@@ -62,18 +60,17 @@ public class InventoryService {
     @Transactional
     public Inventory addToInventory(ReceivedStock receivedStock, Integer quantity) {
         Product product = receivedStock.getProduct();
-        
+
         // Find existing inventory record for this product
         Optional<Inventory> existingInventory = inventoryRepository.findByProductId(product.getId());
-        
+
         Inventory inventory;
         if (existingInventory.isPresent()) {
             inventory = existingInventory.get();
             // Update existing inventory
             inventory.setCurrentQuantity(inventory.getCurrentQuantity() + quantity);
             inventory.setTotalValue(inventory.getTotalValue().add(
-                receivedStock.getUnitPrice().multiply(BigDecimal.valueOf(quantity))
-            ));
+                    receivedStock.getUnitPrice().multiply(BigDecimal.valueOf(quantity))));
             inventory.setLastUpdated(LocalDateTime.now());
             inventory.setLastUpdatedBy(receivedStock.getVerifiedBy());
         } else {
@@ -98,29 +95,31 @@ public class InventoryService {
                     .build();
         }
 
-        return inventoryRepository.save(inventory);
+        @SuppressWarnings("null") // Spring Data JPA save() never returns null
+        Inventory savedInventory = inventoryRepository.save(inventory);
+        return savedInventory;
     }
 
     @Transactional
-    public Inventory updateInventoryQuantity(Long productId, Integer quantityChange, String updatedBy, String reason) {
+    public Inventory updateInventoryQuantity(long productId, Integer quantityChange, String updatedBy, String reason) {
         Optional<Inventory> inventoryOpt = inventoryRepository.findByProductId(productId);
-        
+
         if (inventoryOpt.isEmpty()) {
             throw new RuntimeException("Inventory record not found for product ID: " + productId);
         }
 
         Inventory inventory = inventoryOpt.get();
         int newQuantity = inventory.getCurrentQuantity() + quantityChange;
-        
+
         if (newQuantity < 0) {
-            throw new RuntimeException("Insufficient inventory. Current: " + inventory.getCurrentQuantity() + 
-                                    ", Requested change: " + quantityChange);
+            throw new RuntimeException("Insufficient inventory. Current: " + inventory.getCurrentQuantity() +
+                    ", Requested change: " + quantityChange);
         }
 
         inventory.setCurrentQuantity(newQuantity);
         inventory.setLastUpdated(LocalDateTime.now());
         inventory.setLastUpdatedBy(updatedBy);
-        
+
         // Update total value based on unit cost
         if (inventory.getUnitCost() != null) {
             inventory.setTotalValue(inventory.getUnitCost().multiply(BigDecimal.valueOf(newQuantity)));
@@ -130,18 +129,18 @@ public class InventoryService {
     }
 
     @Transactional
-    public Inventory reserveInventory(Long productId, Integer quantity, String reservedBy) {
+    public Inventory reserveInventory(long productId, Integer quantity, String reservedBy) {
         Optional<Inventory> inventoryOpt = inventoryRepository.findByProductId(productId);
-        
+
         if (inventoryOpt.isEmpty()) {
             throw new RuntimeException("Inventory record not found for product ID: " + productId);
         }
 
         Inventory inventory = inventoryOpt.get();
-        
+
         if (inventory.getAvailableQuantity() < quantity) {
-            throw new RuntimeException("Insufficient available inventory. Available: " + 
-                                    inventory.getAvailableQuantity() + ", Requested: " + quantity);
+            throw new RuntimeException("Insufficient available inventory. Available: " +
+                    inventory.getAvailableQuantity() + ", Requested: " + quantity);
         }
 
         inventory.setReservedQuantity(inventory.getReservedQuantity() + quantity);
@@ -152,18 +151,18 @@ public class InventoryService {
     }
 
     @Transactional
-    public Inventory releaseReservation(Long productId, Integer quantity, String releasedBy) {
+    public Inventory releaseReservation(long productId, Integer quantity, String releasedBy) {
         Optional<Inventory> inventoryOpt = inventoryRepository.findByProductId(productId);
-        
+
         if (inventoryOpt.isEmpty()) {
             throw new RuntimeException("Inventory record not found for product ID: " + productId);
         }
 
         Inventory inventory = inventoryOpt.get();
-        
+
         if (inventory.getReservedQuantity() < quantity) {
-            throw new RuntimeException("Insufficient reserved inventory. Reserved: " + 
-                                    inventory.getReservedQuantity() + ", Requested release: " + quantity);
+            throw new RuntimeException("Insufficient reserved inventory. Reserved: " +
+                    inventory.getReservedQuantity() + ", Requested release: " + quantity);
         }
 
         inventory.setReservedQuantity(inventory.getReservedQuantity() - quantity);
@@ -189,7 +188,7 @@ public class InventoryService {
         return inventoryRepository.findOutOfStockItems();
     }
 
-    public Optional<Inventory> getInventoryByProductId(Long productId) {
+    public Optional<Inventory> getInventoryByProductId(long productId) {
         return inventoryRepository.findByProductId(productId);
     }
 
@@ -246,7 +245,7 @@ public class InventoryService {
         }
 
         // If no active stores exist, throw an exception
-        throw new RuntimeException("No active stores found. Please create at least one active store before adding inventory.");
+        throw new RuntimeException(
+                "No active stores found. Please create at least one active store before adding inventory.");
     }
 }
-
