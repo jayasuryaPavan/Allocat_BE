@@ -40,15 +40,20 @@ public class StockTransferService {
             throw new RuntimeException("Cannot transfer to the same store");
         }
 
-        Warehouse fromWarehouse = null;
-        Warehouse toWarehouse = null;
+        final Warehouse fromWarehouse;
         if (request.getFromWarehouseId() != null) {
             fromWarehouse = warehouseRepository.findById(request.getFromWarehouseId())
                     .orElseThrow(() -> new RuntimeException("From warehouse not found"));
+        } else {
+            fromWarehouse = null;
         }
+
+        final Warehouse toWarehouse;
         if (request.getToWarehouseId() != null) {
             toWarehouse = warehouseRepository.findById(request.getToWarehouseId())
                     .orElseThrow(() -> new RuntimeException("To warehouse not found"));
+        } else {
+            toWarehouse = null;
         }
 
         // Determine transfer type
@@ -76,9 +81,6 @@ public class StockTransferService {
 
         StockTransfer savedTransfer = stockTransferRepository.save(transfer);
 
-        final Long fromStoreId = fromStore.getId();
-        final Long fromWarehouseId = (fromWarehouse != null ? fromWarehouse.getId() : null);
-
         // Create transfer items
         List<StockTransferItem> items = request.getItems().stream()
                 .map(itemRequest -> {
@@ -87,8 +89,8 @@ public class StockTransferService {
                                     () -> new RuntimeException("Product not found: " + itemRequest.getProductId()));
 
                     // Verify inventory availability
-                    verifyInventoryAvailability(product.getId(), fromStoreId,
-                            fromWarehouseId,
+                    verifyInventoryAvailability(product.getId(), fromStore.getId(),
+                            fromWarehouse != null ? fromWarehouse.getId() : null,
                             itemRequest.getQuantity());
 
                     return StockTransferItem.builder()

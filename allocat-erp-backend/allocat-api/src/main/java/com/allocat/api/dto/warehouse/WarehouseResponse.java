@@ -62,11 +62,13 @@ public class WarehouseResponse {
         if (warehouse.getManager() != null) {
             response.setManagerId(warehouse.getManager().getId());
             if (warehouse.getManager().getFirstName() != null || warehouse.getManager().getLastName() != null) {
-                response.setManagerName((
-                    (warehouse.getManager().getFirstName() != null ? warehouse.getManager().getFirstName() : "") +
-                    " " +
-                    (warehouse.getManager().getLastName() != null ? warehouse.getManager().getLastName() : "")
-                ).trim());
+                String managerName = ((warehouse.getManager().getFirstName() != null
+                        ? warehouse.getManager().getFirstName()
+                        : "") +
+                        " " +
+                        (warehouse.getManager().getLastName() != null ? warehouse.getManager().getLastName() : ""))
+                        .trim();
+                response.setManagerName(managerName);
             }
         }
 

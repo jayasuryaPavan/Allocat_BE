@@ -14,50 +14,40 @@ import org.springframework.stereotype.Component;
 public class SecurityUtils {
 
     /**
-     * Get current user ID from an Authentication object.
-     * (Kept for backwards compatibility with controllers/services that pass Authentication explicitly.)
-     */
-    public static Long getCurrentUserId(Authentication auth) {
-        try {
-            if (auth == null || !auth.isAuthenticated()) {
-                return null;
-            }
-
-            Object details = auth.getDetails();
-            if (details instanceof Long) {
-                return (Long) details;
-            }
-
-            Object principal = auth.getPrincipal();
-            if (principal instanceof String) {
-                try {
-                    return Long.parseLong((String) principal);
-                } catch (NumberFormatException e) {
-                    // ignore
-                }
-            }
-
-            Object credentials = auth.getCredentials();
-            if (credentials instanceof Long) {
-                return (Long) credentials;
-            }
-
-            log.debug("Could not extract user ID from provided authentication. Principal: {}", auth.getName());
-            return null;
-        } catch (Exception e) {
-            log.error("Error extracting user ID from provided authentication", e);
-            return null;
-        }
-    }
-
-    /**
      * Get current user ID from security context.
      * The user ID is expected to be stored in the authentication details or credentials.
      */
     public static Long getCurrentUserId() {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            return getCurrentUserId(auth);
+            if (auth == null || !auth.isAuthenticated()) {
+                return null;
+            }
+
+            // Try to get from authentication details (set by JWT filter)
+            Object details = auth.getDetails();
+            if (details instanceof Long) {
+                return (Long) details;
+            }
+            
+            // Try to parse from principal if it's a numeric string
+            Object principal = auth.getPrincipal();
+            if (principal instanceof String) {
+                try {
+                    return Long.parseLong((String) principal);
+                } catch (NumberFormatException e) {
+                    // Principal is not a numeric ID
+                }
+            }
+
+            // Try credentials (some implementations store user ID here)
+            Object credentials = auth.getCredentials();
+            if (credentials instanceof Long) {
+                return (Long) credentials;
+            }
+
+            log.debug("Could not extract user ID from authentication. Principal: {}", auth.getName());
+            return null;
         } catch (Exception e) {
             log.error("Error extracting current user ID", e);
             return null;

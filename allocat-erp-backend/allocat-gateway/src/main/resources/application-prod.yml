@@ -1,27 +1,26 @@
+# Production configuration for Allocat Gateway on Cloud Run
+# Service URLs are injected via environment variables
+
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 spring:
   application:
     name: allocat-gateway
-  profiles:
-    active: prod
   cloud:
     gateway:
       routes:
         # Xtractor route - handles PDF extraction at /api/v1/extract/**
-        # Update with production URL when Xtractor is deployed
         - id: xtractor-extract
-          uri: ${XTractor_URL:http://localhost:8001}
+          uri: ${XTRACTOR_URL:http://localhost:8001}
           predicates:
             - Path=/api/v1/extract/**
           filters:
             - RewritePath=/api/v1/extract/(?<segment>.*), /api/v1/extract/${segment}
 
         # InvenGadu chat route - handles chat at /api/chat/**
-        # Update with production URL when InvenGadu is deployed
         - id: invengadu-chat
-          uri: ${InvenGadu_URL:http://localhost:8000}
+          uri: ${INVENGADU_URL:http://localhost:8000}
           predicates:
             - Path=/api/chat/**
           filters:
@@ -29,36 +28,32 @@ spring:
 
         # POS API route - must come before generic /api/** route
         - id: pos-api
-          uri: ${API_URL:http://localhost:8081}
+          uri: ${BACKEND_URL:http://localhost:8081}
           predicates:
             - Path=/api/pos/**
 
         # Auth routes
         - id: auth
-          uri: ${API_URL:http://localhost:8081}
+          uri: ${BACKEND_URL:http://localhost:8081}
           predicates:
             - Path=/auth/**, /api/auth/**
 
         # Backend API catch-all route - must come last
         - id: backend-api
-          uri: ${API_URL:http://localhost:8081}
+          uri: ${BACKEND_URL:http://localhost:8081}
           predicates:
             - Path=/api/**, /v3/api-docs/**, /swagger-ui.html, /swagger-ui/**
 
 jwt:
-  secret: ${JWT_SECRET:allocat-erp-super-secret-jwt-signing-key-minimum-256-bits-required-for-security}
+  secret: ${JWT_SECRET}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
-  endpoint:
-    health:
-      show-details: when-authorized
+        include: health,info
 
 logging:
   level:
-    com.allocat: INFO
-    org.springframework: WARN
     org.springframework.cloud.gateway: INFO
+    com.allocat: INFO
