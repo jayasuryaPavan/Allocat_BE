@@ -193,6 +193,7 @@ public class UserStoreAccessController {
 
     // Helper method to extract user ID from authentication
     private Long getCurrentUserId(Authentication auth) {
-        return SecurityUtils.getCurrentUserId(auth);
+        // SecurityUtils reads from the SecurityContext; keep the signature to avoid touching call sites.
+        return SecurityUtils.getCurrentUserId();
     }
 }
