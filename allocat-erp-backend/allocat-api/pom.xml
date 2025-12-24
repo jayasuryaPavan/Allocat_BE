@@ -18,6 +18,11 @@
     <dependencies>
         <dependency>
             <groupId>com.allocat</groupId>
+            <artifactId>allocat-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.allocat</groupId>
             <artifactId>allocat-core</artifactId>
             <version>${project.version}</version>
         </dependency>
