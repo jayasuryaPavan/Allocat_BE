@@ -1,0 +1,67 @@
+# Google Cloud Build configuration for Allocat ERP
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/allocat-erp:$SHORT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/allocat-erp:latest'
+      - '-f'
+      - 'Dockerfile'
+      - '.'
+    dir: 'allocat-erp-backend'
+
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/allocat-erp:$SHORT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/allocat-erp:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'allocat-erp'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/allocat-erp:$SHORT_SHA'
+      - '--region'
+      - 'northamerica-northeast1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8081'
+      - '--memory'
+      - '2Gi'
+      - '--cpu'
+      - '2'
+      - '--min-instances'
+      - '1'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'SPRING_PROFILES_ACTIVE=prod'
+      - '--add-cloudsql-instances'
+      - '${_CLOUDSQL_INSTANCE}'
+      - '--set-secrets'
+      - 'SPRING_DATASOURCE_URL=cloudsql-connection-name:latest,SPRING_DATASOURCE_USERNAME=db-user:latest,SPRING_DATASOURCE_PASSWORD=db-password:latest,JWT_SECRET=jwt-secret:latest'
+
+images:
+  - 'gcr.io/$PROJECT_ID/allocat-erp:$SHORT_SHA'
+  - 'gcr.io/$PROJECT_ID/allocat-erp:latest'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _CLOUDSQL_INSTANCE: '${PROJECT_ID}:northamerica-northeast1:allocat-db'
