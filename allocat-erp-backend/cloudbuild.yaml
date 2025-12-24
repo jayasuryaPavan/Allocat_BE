@@ -11,7 +11,6 @@ steps:
       - '-f'
       - 'Dockerfile'
       - '.'
-    dir: 'Backend/allocat-erp-backend'
 
   # Push the image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
