@@ -10,6 +10,8 @@
 package com.allocat.api.controller;
 
 import com.allocat.api.dto.shift.*;
+import com.allocat.auth.entity.User;
+import com.allocat.auth.repository.UserRepository;
 import com.allocat.common.dto.ApiResponse;
 import com.allocat.pos.entity.SalesPersonLogin;
 import com.allocat.pos.entity.Shift;
@@ -23,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -37,6 +40,7 @@ import java.util.stream.Collectors;
 public class ShiftController {
 
     private final ShiftService shiftService;
+    private final UserRepository userRepository;
 
     // ========= Shift Management =========
 
@@ -107,6 +111,36 @@ public class ShiftController {
         } catch (Exception e) {
             log.error("Error getting shift", e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{shiftId}")
+    @Operation(summary = "Update shift", description = "Update shift start/end times")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER')")
+    public ResponseEntity<ApiResponse<ShiftResponse>> updateShift(
+            @PathVariable Long shiftId,
+            @RequestBody UpdateShiftRequest request) {
+        try {
+            Shift shift = shiftService.getShiftById(shiftId);
+
+            if (request.getStartedAt() != null) {
+                shift.setStartedAt(request.getStartedAt());
+            }
+            if (request.getEndedAt() != null) {
+                shift.setEndedAt(request.getEndedAt());
+                if (shift.getStatus() == Shift.ShiftStatus.ACTIVE) {
+                    shift.setStatus(Shift.ShiftStatus.COMPLETED);
+                }
+            }
+
+            // Save the updated shift (need to add updateShift method to service)
+            Shift saved = shiftService.updateShift(shift);
+
+            return ResponseEntity.ok(ApiResponse.success(toShiftResponse(saved), "Shift updated successfully"));
+        } catch (Exception e) {
+            log.error("Error updating shift", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -403,10 +437,23 @@ public class ShiftController {
     // ========= Mappers =========
 
     private ShiftResponse toShiftResponse(Shift shift) {
+        String userName = null;
+        if (shift.getUserId() != null) {
+            userName = userRepository.findById(shift.getUserId())
+                    .map(user -> {
+                        String name = (user.getFirstName() != null ? user.getFirstName() : "") +
+                                " " + (user.getLastName() != null ? user.getLastName() : "");
+                        name = name.trim();
+                        return name.isEmpty() ? user.getUsername() : name;
+                    })
+                    .orElse(null);
+        }
+
         return ShiftResponse.builder()
                 .id(shift.getId())
                 .storeId(shift.getStoreId())
                 .userId(shift.getUserId())
+                .userName(userName)
                 .shiftDate(shift.getShiftDate())
                 .startedAt(shift.getStartedAt())
                 .endedAt(shift.getEndedAt())
@@ -457,5 +504,98 @@ public class ShiftController {
                 .location(login.getLocation())
                 .createdAt(login.getCreatedAt())
                 .build();
+    }
+
+    // ========= Associate Authentication for POS Kiosk Mode =========
+
+    @PostMapping("/associate/authenticate")
+    @Operation(summary = "Authenticate associate", description = "Authenticate an associate using associate number and passcode for POS Kiosk mode")
+    public ResponseEntity<ApiResponse<AssociateAuthResponse>> authenticateAssociate(
+            @Valid @RequestBody AssociateAuthRequest request) {
+        try {
+            ShiftService.AssociateAuthResult result = shiftService.authenticateAssociate(
+                    request.getStoreId(),
+                    request.getAssociateNumber(),
+                    request.getPasscode());
+
+            AssociateAuthResponse response = AssociateAuthResponse.builder()
+                    .userId(result.userId())
+                    .associateNumber(result.associateNumber())
+                    .name(result.name())
+                    .shiftId(result.shiftId())
+                    .build();
+
+            return ResponseEntity.ok(ApiResponse.success(response, "Associate authenticated successfully"));
+        } catch (Exception e) {
+            log.error("Associate authentication failed", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/associate/verify-passcode")
+    @Operation(summary = "Verify passcode", description = "Verify associate passcode for sign out")
+    public ResponseEntity<ApiResponse<Boolean>> verifyAssociatePasscode(
+            @RequestBody VerifyPasscodeRequest request) {
+        try {
+            boolean valid = shiftService.verifyAssociatePasscode(request.getUserId(), request.getPasscode());
+            if (!valid) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Invalid passcode"));
+            }
+            return ResponseEntity.ok(ApiResponse.success(true, "Passcode verified"));
+        } catch (Exception e) {
+            log.error("Passcode verification failed", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========= Associate Credentials CRUD =========
+
+    @GetMapping("/associate/credentials")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STORE_MANAGER')")
+    @Operation(summary = "Get all credentials", description = "Get all associate credentials")
+    public ResponseEntity<ApiResponse<List<ShiftService.CredentialResponse>>> getAllCredentials() {
+        try {
+            List<ShiftService.CredentialResponse> credentials = shiftService.getAllCredentials();
+            return ResponseEntity.ok(ApiResponse.success(credentials, "Credentials retrieved"));
+        } catch (Exception e) {
+            log.error("Failed to get credentials", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/associate/credentials")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STORE_MANAGER')")
+    @Operation(summary = "Create credential", description = "Create a new associate credential")
+    public ResponseEntity<ApiResponse<ShiftService.CredentialResponse>> createCredential(
+            @Valid @RequestBody CreateCredentialRequest request) {
+        try {
+            ShiftService.CredentialResponse credential = shiftService.createCredential(
+                    request.getUserId(),
+                    request.getAssociateNumber(),
+                    request.getPasscode(),
+                    request.getStoreId());
+            return ResponseEntity.ok(ApiResponse.success(credential, "Credential created successfully"));
+        } catch (Exception e) {
+            log.error("Failed to create credential", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @lombok.Data
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CreateCredentialRequest {
+        @jakarta.validation.constraints.NotNull
+        private Long userId;
+        @jakarta.validation.constraints.NotBlank
+        private String associateNumber;
+        @jakarta.validation.constraints.NotBlank
+        private String passcode;
+        private Long storeId;
     }
 }

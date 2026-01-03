@@ -3,6 +3,7 @@ package com.allocat.api.controller;
 import com.allocat.common.dto.ApiResponse;
 import com.allocat.inventory.entity.Product;
 import com.allocat.inventory.repository.ProductRepository;
+import com.allocat.inventory.repository.InventoryRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ import java.util.Optional;
 public class ProductController {
 
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
 
     @GetMapping
     @Operation(summary = "Get all products", description = "Retrieve all products with pagination, sorting, and filtering")
@@ -58,6 +60,12 @@ public class ProductController {
             } else {
                 products = productRepository.findAll(pageable);
             }
+
+            // Populate availableQuantity for each product from inventory
+            products.getContent().forEach(product -> {
+                Integer qty = inventoryRepository.getTotalAvailableQuantityByProductId(product.getId());
+                product.setAvailableQuantity(qty != null ? qty : 0);
+            });
 
             return ResponseEntity.ok(ApiResponse.<Page<Product>>builder()
                     .success(true)
