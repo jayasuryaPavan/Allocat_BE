@@ -194,15 +194,29 @@ public class AuthController {
 
                         // Extract username and validate token
                         String username = jwtUtil.extractUsername(token);
+                        log.info("Refresh token request for username: {}", username);
 
                         if (!jwtUtil.validateToken(token, username)) {
+                                log.warn("Invalid or expired refresh token for user: {}", username);
                                 return ResponseEntity.status(401)
                                                 .body(ApiResponse.error("Invalid or expired refresh token"));
                         }
 
                         // Get user details to preserve role and userId
                         User user = authService.getUserByUsername(username);
+
+                        // Debug logging to diagnose role issue
+                        log.info("User found: id={}, username={}", user.getId(), user.getUsername());
+                        log.info("User role object: {}", user.getRole());
+                        if (user.getRole() != null) {
+                                log.info("User role ID: {}, Name: {}", user.getRole().getId(),
+                                                user.getRole().getName());
+                        } else {
+                                log.warn("User {} has NULL role!", user.getUsername());
+                        }
+
                         String roleName = user.getRole() != null ? user.getRole().getName() : "VIEWER";
+                        log.info("Using roleName: {} for new access token", roleName);
 
                         // Generate new access token with correct role and userId
                         String newAccessToken = jwtUtil.generateToken(username, roleName, user.getId());

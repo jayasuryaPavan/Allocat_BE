@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -457,5 +458,98 @@ public class ShiftController {
                 .location(login.getLocation())
                 .createdAt(login.getCreatedAt())
                 .build();
+    }
+
+    // ========= Associate Authentication for POS Kiosk Mode =========
+
+    @PostMapping("/associate/authenticate")
+    @Operation(summary = "Authenticate associate", description = "Authenticate an associate using associate number and passcode for POS Kiosk mode")
+    public ResponseEntity<ApiResponse<AssociateAuthResponse>> authenticateAssociate(
+            @Valid @RequestBody AssociateAuthRequest request) {
+        try {
+            ShiftService.AssociateAuthResult result = shiftService.authenticateAssociate(
+                    request.getStoreId(),
+                    request.getAssociateNumber(),
+                    request.getPasscode());
+
+            AssociateAuthResponse response = AssociateAuthResponse.builder()
+                    .userId(result.userId())
+                    .associateNumber(result.associateNumber())
+                    .name(result.name())
+                    .shiftId(result.shiftId())
+                    .build();
+
+            return ResponseEntity.ok(ApiResponse.success(response, "Associate authenticated successfully"));
+        } catch (Exception e) {
+            log.error("Associate authentication failed", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/associate/verify-passcode")
+    @Operation(summary = "Verify passcode", description = "Verify associate passcode for sign out")
+    public ResponseEntity<ApiResponse<Boolean>> verifyAssociatePasscode(
+            @RequestBody VerifyPasscodeRequest request) {
+        try {
+            boolean valid = shiftService.verifyAssociatePasscode(request.getUserId(), request.getPasscode());
+            if (!valid) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Invalid passcode"));
+            }
+            return ResponseEntity.ok(ApiResponse.success(true, "Passcode verified"));
+        } catch (Exception e) {
+            log.error("Passcode verification failed", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // ========= Associate Credentials CRUD =========
+
+    @GetMapping("/associate/credentials")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STORE_MANAGER')")
+    @Operation(summary = "Get all credentials", description = "Get all associate credentials")
+    public ResponseEntity<ApiResponse<List<ShiftService.CredentialResponse>>> getAllCredentials() {
+        try {
+            List<ShiftService.CredentialResponse> credentials = shiftService.getAllCredentials();
+            return ResponseEntity.ok(ApiResponse.success(credentials, "Credentials retrieved"));
+        } catch (Exception e) {
+            log.error("Failed to get credentials", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/associate/credentials")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STORE_MANAGER')")
+    @Operation(summary = "Create credential", description = "Create a new associate credential")
+    public ResponseEntity<ApiResponse<ShiftService.CredentialResponse>> createCredential(
+            @Valid @RequestBody CreateCredentialRequest request) {
+        try {
+            ShiftService.CredentialResponse credential = shiftService.createCredential(
+                    request.getUserId(),
+                    request.getAssociateNumber(),
+                    request.getPasscode(),
+                    request.getStoreId());
+            return ResponseEntity.ok(ApiResponse.success(credential, "Credential created successfully"));
+        } catch (Exception e) {
+            log.error("Failed to create credential", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @lombok.Data
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CreateCredentialRequest {
+        @jakarta.validation.constraints.NotNull
+        private Long userId;
+        @jakarta.validation.constraints.NotBlank
+        private String associateNumber;
+        @jakarta.validation.constraints.NotBlank
+        private String passcode;
+        private Long storeId;
     }
 }

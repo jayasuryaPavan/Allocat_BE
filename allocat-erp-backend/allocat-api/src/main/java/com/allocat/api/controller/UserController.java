@@ -39,14 +39,14 @@ import java.util.stream.Collectors;
 @Tag(name = "Users", description = "User management endpoints")
 @SecurityRequirement(name = "Bearer Authentication")
 public class UserController {
-    
+
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final StoreService storeService;
-    
+
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    @Operation(summary = "Get all users", description = "Retrieve a list of all users in the system (SUPER_ADMIN or ADMIN)")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STORE_MANAGER')")
+    @Operation(summary = "Get all users", description = "Retrieve a list of all users in the system (SUPER_ADMIN, ADMIN, or STORE_MANAGER)")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved users list"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - insufficient permissions"),
@@ -55,9 +55,10 @@ public class UserController {
     public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            log.info("getAllUsers called. Auth: {}, Authorities: {}", auth.getName(), auth.getAuthorities());
             String currentUsername = auth.getName();
             User currentUser = userService.getUserByUsername(currentUsername);
-            
+
             List<User> users;
             // If ADMIN, only show users from the same store
             if (currentUser.getRole().getName().equals("ADMIN") && currentUser.getStoreId() != null) {
@@ -66,7 +67,7 @@ public class UserController {
                 // SUPER_ADMIN sees all users
                 users = userService.getAllUsers();
             }
-            
+
             // Convert to UserResponse with store codes
             List<UserResponse> userResponses = users.stream()
                     .map(user -> {
@@ -84,7 +85,7 @@ public class UserController {
                         return UserResponse.fromEntity(user, storeCode, storeName);
                     })
                     .collect(Collectors.toList());
-            
+
             return ResponseEntity.ok(ApiResponse.success(userResponses, "Users retrieved successfully"));
         } catch (Exception e) {
             log.error("Error retrieving users", e);
@@ -92,7 +93,7 @@ public class UserController {
                     .body(ApiResponse.error("Error retrieving users: " + e.getMessage()));
         }
     }
-    
+
     @GetMapping("/roles")
     @Operation(summary = "Get all roles", description = "Retrieve a list of all available roles with their permissions")
     @ApiResponses(value = {
@@ -103,7 +104,7 @@ public class UserController {
         List<Role> roles = userService.getAllRoles();
         return ResponseEntity.ok(ApiResponse.success(roles));
     }
-    
+
     public record CreateUserRequest(
             @Schema(example = "john_doe") String username,
             @Schema(example = "john@example.com") String email,
@@ -113,9 +114,9 @@ public class UserController {
             @Schema(example = "+1234567890") String phone,
             @Schema(example = "SALES_STAFF", description = "Role name (e.g., SUPER_ADMIN, ADMIN, STORE_MANAGER, etc.)") String roleName,
             @Schema(example = "STR001", description = "Store Code (alphanumeric like STR001, CRK2645, etc.)") String storeCode,
-            @Schema(description = "Store ID (deprecated - use storeCode instead)", deprecated = true) Long storeId
-    ) {}
-    
+            @Schema(description = "Store ID (deprecated - use storeCode instead)", deprecated = true) Long storeId) {
+    }
+
     @PostMapping
     @Operation(summary = "Create a new user", description = "Create a new user in the system")
     @ApiResponses(value = {
@@ -124,52 +125,40 @@ public class UserController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<ApiResponse<UserResponse>> createUser(
-            @Parameter(description = "User object to be created", required = true)
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "User details",
-                    required = true,
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = CreateUserRequest.class),
-                            examples = @ExampleObject(
-                                    name = "Example User",
-                                    value = """
-                                            {
-                                                "username": "john_doe",
-                                                "email": "john@example.com",
-                                                "password": "password",
-                                                "firstName": "John",
-                                                "lastName": "Doe",
-                                                "phone": "+1234567890"
-                                            }
-                                            """
-                            )
-                    )
-            )
-            @Valid @RequestBody CreateUserRequest req) {
+            @Parameter(description = "User object to be created", required = true) @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "User details", required = true, content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = CreateUserRequest.class), examples = @ExampleObject(name = "Example User", value = """
+                    {
+                        "username": "john_doe",
+                        "email": "john@example.com",
+                        "password": "password",
+                        "firstName": "John",
+                        "lastName": "Doe",
+                        "phone": "+1234567890"
+                    }
+                    """))) @Valid @RequestBody CreateUserRequest req) {
         try {
             // Get current user
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String currentUsername = auth.getName();
             User currentUser = userService.getUserByUsername(currentUsername);
             String currentUserRole = currentUser.getRole().getName();
-            
+
             // Set role (default to VIEWER if not specified)
             String roleName = (req.roleName() == null || req.roleName().isBlank()) ? "VIEWER" : req.roleName();
-            
+
             // Determine store ID from store code or storeId (backward compatibility)
             Long assignedStoreId = null;
             String assignedStoreCode = null;
             String assignedStoreName = null;
-            
+
             // Prefer storeCode over storeId
             if (req.storeCode() != null && !req.storeCode().isBlank()) {
                 // Check if store exists by code
                 if (!storeService.existsByCode(req.storeCode())) {
                     return ResponseEntity.badRequest()
-                            .body(ApiResponse.error("Store with code '" + req.storeCode() + "' does not exist. Please use a valid store code (e.g., STR001, CRK2645)."));
+                            .body(ApiResponse.error("Store with code '" + req.storeCode()
+                                    + "' does not exist. Please use a valid store code (e.g., STR001, CRK2645)."));
                 }
-                
+
                 // Get the store by code
                 try {
                     Store store = storeService.getStoreByCode(req.storeCode());
@@ -189,10 +178,11 @@ public class UserController {
                     assignedStoreName = store.getName();
                 } catch (IllegalArgumentException e) {
                     return ResponseEntity.badRequest()
-                            .body(ApiResponse.error("Store with ID '" + req.storeId() + "' not found. Please use storeCode instead."));
+                            .body(ApiResponse.error(
+                                    "Store with ID '" + req.storeId() + "' not found. Please use storeCode instead."));
                 }
             }
-            
+
             // Validate role assignment permissions
             if ("ADMIN".equals(roleName)) {
                 // Only SUPER_ADMIN can create ADMIN users
@@ -201,21 +191,22 @@ public class UserController {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN)
                             .body(ApiResponse.error("Only SUPER_ADMIN can create ADMIN users"));
                 }
-                
+
                 // ADMIN role must have a store assigned
                 if (assignedStoreId == null) {
                     return ResponseEntity.badRequest()
-                            .body(ApiResponse.error("ADMIN role requires a store assignment. Please provide a valid storeCode."));
+                            .body(ApiResponse.error(
+                                    "ADMIN role requires a store assignment. Please provide a valid storeCode."));
                 }
             }
-            
+
             if ("SUPER_ADMIN".equals(roleName)) {
                 // No one can create SUPER_ADMIN users
                 log.warn("Attempt to create SUPER_ADMIN user blocked");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("SUPER_ADMIN users cannot be created through this endpoint"));
             }
-            
+
             // If current user is ADMIN, enforce store restriction
             if ("ADMIN".equals(currentUserRole)) {
                 // ADMIN can only create users for their own store
@@ -226,9 +217,10 @@ public class UserController {
                 }
                 assignedStoreId = currentUser.getStoreId();
             }
-            
-            String rawPassword = (req.password() == null || req.password().isBlank()) ? generateTempPassword() : req.password();
-            
+
+            String rawPassword = (req.password() == null || req.password().isBlank()) ? generateTempPassword()
+                    : req.password();
+
             User toCreate = User.builder()
                     .username(req.username())
                     .email(req.email())
@@ -239,14 +231,14 @@ public class UserController {
                     .role(userService.findRoleByName(roleName))
                     .storeId(assignedStoreId)
                     .build();
-            
+
             User createdUser = userService.createUser(toCreate);
             log.info("User created successfully: {} by {}", createdUser.getUsername(), currentUsername);
-            
+
             // Return UserResponse with store code
             UserResponse response = UserResponse.fromEntity(createdUser, assignedStoreCode, assignedStoreName);
             return ResponseEntity.ok(ApiResponse.success(response, "User created successfully"));
-            
+
         } catch (IllegalArgumentException e) {
             log.error("Error creating user: {}", e.getMessage());
             return ResponseEntity.badRequest()
@@ -257,7 +249,7 @@ public class UserController {
                     .body(ApiResponse.error("Error creating user: " + e.getMessage()));
         }
     }
-    
+
     private String generateTempPassword() {
         byte[] bytes = new byte[12];
         new SecureRandom().nextBytes(bytes);

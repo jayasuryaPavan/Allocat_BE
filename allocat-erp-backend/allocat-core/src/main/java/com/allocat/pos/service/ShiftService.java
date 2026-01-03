@@ -9,16 +9,20 @@
 
 package com.allocat.pos.service;
 
+import com.allocat.auth.entity.User;
 import com.allocat.auth.repository.StoreRepository;
 import com.allocat.auth.repository.UserRepository;
+import com.allocat.pos.entity.AssociateCredential;
 import com.allocat.pos.entity.SalesPersonLogin;
 import com.allocat.pos.entity.Shift;
 import com.allocat.pos.entity.ShiftSwap;
+import com.allocat.pos.repository.AssociateCredentialRepository;
 import com.allocat.pos.repository.SalesPersonLoginRepository;
 import com.allocat.pos.repository.ShiftRepository;
 import com.allocat.pos.repository.ShiftSwapRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,9 +30,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Service for managing shifts, shift swaps, and sales person logins
+ * Service for managing shifts, shift swaps, sales person logins, and associate
+ * authentication
  */
 @Service
 @RequiredArgsConstructor
@@ -38,14 +44,13 @@ public class ShiftService {
     private final ShiftRepository shiftRepository;
     private final ShiftSwapRepository shiftSwapRepository;
     private final SalesPersonLoginRepository salesPersonLoginRepository;
+    private final AssociateCredentialRepository associateCredentialRepository;
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     // ============ Shift Management ============
 
-    /**
-     * Start a new shift for a user
-     */
     @Transactional
     public Shift startShift(Long userId, Long storeId, BigDecimal startingCashAmount,
             LocalDateTime expectedStartTime, LocalDateTime expectedEndTime, String notes) {
@@ -55,7 +60,6 @@ public class ShiftService {
             throw new RuntimeException("Store not found: " + storeId);
         }
 
-        // Validate user exists
         if (!userRepository.existsById(userId)) {
             throw new RuntimeException("User not found: " + userId);
         }
@@ -88,9 +92,6 @@ public class ShiftService {
         return savedShift;
     }
 
-    /**
-     * End an active shift
-     */
     @Transactional
     public Shift endShift(Long shiftId, Long endedByUserId, BigDecimal endingCashAmount,
             BigDecimal expectedCashAmount, String notes) {
@@ -380,5 +381,190 @@ public class ShiftService {
             return salesPersonLoginRepository.findLoginsByStoreAndDate(storeId, date);
         }
         return salesPersonLoginRepository.findByUserIdAndLogoutTimeIsNull(storeId);
+    }
+
+    // ============ Associate Authentication for POS Kiosk Mode ============
+
+    /**
+     * Authenticate an associate for POS Kiosk sign-in
+     */
+    @Transactional
+    public AssociateAuthResult authenticateAssociate(Long storeId, String associateNumber, String passcode) {
+        log.info("Authenticating associate: {} for store: {}", associateNumber, storeId);
+
+        // Try to find by store-specific credential first, then any active credential
+        Optional<AssociateCredential> credentialOpt = associateCredentialRepository
+                .findByAssociateNumberAndStoreIdAndIsActiveTrue(associateNumber, storeId);
+
+        if (credentialOpt.isEmpty()) {
+            credentialOpt = associateCredentialRepository.findByAssociateNumberAndIsActiveTrue(associateNumber);
+        }
+
+        AssociateCredential credential = credentialOpt
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+
+        // Verify passcode
+        if (!passwordEncoder.matches(passcode, credential.getPasscodeHash())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        // Get user details
+        User user = userRepository.findById(credential.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check if shift exists or create one
+        Optional<Shift> existingShift = shiftRepository.findActiveShiftByStoreAndUser(storeId, credential.getUserId());
+
+        Shift shift;
+        if (existingShift.isPresent()) {
+            shift = existingShift.get();
+        } else {
+            shift = startShift(credential.getUserId(), storeId, null, null, null, "POS Kiosk sign-in");
+        }
+
+        log.info("Associate authenticated successfully: {}", associateNumber);
+
+        return new AssociateAuthResult(
+                credential.getUserId(),
+                associateNumber,
+                user.getFirstName() + " " + user.getLastName(),
+                shift.getId());
+    }
+
+    /**
+     * Verify associate passcode for sign-out
+     */
+    public boolean verifyAssociatePasscode(Long userId, String passcode) {
+        log.info("Verifying passcode for user: {}", userId);
+
+        AssociateCredential credential = associateCredentialRepository
+                .findByUserIdAndIsActiveTrue(userId)
+                .orElseThrow(() -> new RuntimeException("Associate not found"));
+
+        return passwordEncoder.matches(passcode, credential.getPasscodeHash());
+    }
+
+    // ============ Credential CRUD Operations ============
+
+    /**
+     * Get all associate credentials
+     */
+    public List<CredentialResponse> getAllCredentials() {
+        log.info("Getting all associate credentials");
+
+        List<AssociateCredential> credentials = associateCredentialRepository.findAll();
+
+        return credentials.stream().map(c -> {
+            String userName = "Unknown";
+            String storeName = null;
+
+            try {
+                User user = userRepository.findById(c.getUserId()).orElse(null);
+                if (user != null) {
+                    userName = (user.getFirstName() != null ? user.getFirstName() : "") +
+                            " " + (user.getLastName() != null ? user.getLastName() : "");
+                    userName = userName.trim();
+                    if (userName.isEmpty())
+                        userName = user.getUsername();
+                }
+            } catch (Exception e) {
+                log.warn("Could not find user for credential: {}", c.getId());
+            }
+
+            if (c.getStoreId() != null) {
+                try {
+                    storeName = storeRepository.findById(c.getStoreId())
+                            .map(s -> s.getName())
+                            .orElse(null);
+                } catch (Exception e) {
+                    log.warn("Could not find store for credential: {}", c.getId());
+                }
+            }
+
+            return new CredentialResponse(
+                    c.getId(),
+                    c.getUserId(),
+                    userName,
+                    c.getAssociateNumber(),
+                    c.getStoreId(),
+                    storeName,
+                    c.getIsActive(),
+                    c.getCreatedAt() != null ? c.getCreatedAt().toString() : null);
+        }).toList();
+    }
+
+    /**
+     * Create a new associate credential
+     */
+    @Transactional
+    public CredentialResponse createCredential(Long userId, String associateNumber, String passcode, Long storeId) {
+        log.info("Creating credential for user: {} with associate number: {}", userId, associateNumber);
+
+        // Check if user exists
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
+
+        // Check if associate number already exists
+        if (associateCredentialRepository.existsByAssociateNumber(associateNumber)) {
+            throw new RuntimeException("Associate number already exists: " + associateNumber);
+        }
+
+        // Hash the passcode
+        String passcodeHash = passwordEncoder.encode(passcode);
+
+        // Create credential
+        AssociateCredential credential = AssociateCredential.builder()
+                .userId(userId)
+                .associateNumber(associateNumber)
+                .passcodeHash(passcodeHash)
+                .storeId(storeId)
+                .isActive(true)
+                .build();
+
+        AssociateCredential saved = associateCredentialRepository.save(credential);
+        log.info("Credential created successfully: {}", saved.getId());
+
+        String userName = (user.getFirstName() != null ? user.getFirstName() : "") +
+                " " + (user.getLastName() != null ? user.getLastName() : "");
+        userName = userName.trim();
+        if (userName.isEmpty())
+            userName = user.getUsername();
+
+        String storeName = null;
+        if (storeId != null) {
+            storeName = storeRepository.findById(storeId)
+                    .map(s -> s.getName())
+                    .orElse(null);
+        }
+
+        return new CredentialResponse(
+                saved.getId(),
+                saved.getUserId(),
+                userName,
+                saved.getAssociateNumber(),
+                saved.getStoreId(),
+                storeName,
+                saved.getIsActive(),
+                saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : null);
+    }
+
+    /**
+     * Result object for associate authentication
+     */
+    public record AssociateAuthResult(Long userId, String associateNumber, String name, Long shiftId) {
+    }
+
+    /**
+     * Response object for credential operations
+     */
+    public record CredentialResponse(
+            Long id,
+            Long userId,
+            String userName,
+            String associateNumber,
+            Long storeId,
+            String storeName,
+            Boolean isActive,
+            String createdAt) {
     }
 }
