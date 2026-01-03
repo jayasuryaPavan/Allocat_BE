@@ -83,5 +83,8 @@ public class Product extends BaseEntity {
 
     @Column(name = "notes")
     private String notes;
-}
 
+    // Transient field - not persisted, populated from Inventory table
+    @Transient
+    private Integer availableQuantity;
+}

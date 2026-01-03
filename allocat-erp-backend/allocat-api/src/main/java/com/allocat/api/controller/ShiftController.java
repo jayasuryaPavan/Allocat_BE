@@ -10,6 +10,8 @@
 package com.allocat.api.controller;
 
 import com.allocat.api.dto.shift.*;
+import com.allocat.auth.entity.User;
+import com.allocat.auth.repository.UserRepository;
 import com.allocat.common.dto.ApiResponse;
 import com.allocat.pos.entity.SalesPersonLogin;
 import com.allocat.pos.entity.Shift;
@@ -38,6 +40,7 @@ import java.util.stream.Collectors;
 public class ShiftController {
 
     private final ShiftService shiftService;
+    private final UserRepository userRepository;
 
     // ========= Shift Management =========
 
@@ -108,6 +111,36 @@ public class ShiftController {
         } catch (Exception e) {
             log.error("Error getting shift", e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{shiftId}")
+    @Operation(summary = "Update shift", description = "Update shift start/end times")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'STORE_MANAGER')")
+    public ResponseEntity<ApiResponse<ShiftResponse>> updateShift(
+            @PathVariable Long shiftId,
+            @RequestBody UpdateShiftRequest request) {
+        try {
+            Shift shift = shiftService.getShiftById(shiftId);
+
+            if (request.getStartedAt() != null) {
+                shift.setStartedAt(request.getStartedAt());
+            }
+            if (request.getEndedAt() != null) {
+                shift.setEndedAt(request.getEndedAt());
+                if (shift.getStatus() == Shift.ShiftStatus.ACTIVE) {
+                    shift.setStatus(Shift.ShiftStatus.COMPLETED);
+                }
+            }
+
+            // Save the updated shift (need to add updateShift method to service)
+            Shift saved = shiftService.updateShift(shift);
+
+            return ResponseEntity.ok(ApiResponse.success(toShiftResponse(saved), "Shift updated successfully"));
+        } catch (Exception e) {
+            log.error("Error updating shift", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -404,10 +437,23 @@ public class ShiftController {
     // ========= Mappers =========
 
     private ShiftResponse toShiftResponse(Shift shift) {
+        String userName = null;
+        if (shift.getUserId() != null) {
+            userName = userRepository.findById(shift.getUserId())
+                    .map(user -> {
+                        String name = (user.getFirstName() != null ? user.getFirstName() : "") +
+                                " " + (user.getLastName() != null ? user.getLastName() : "");
+                        name = name.trim();
+                        return name.isEmpty() ? user.getUsername() : name;
+                    })
+                    .orElse(null);
+        }
+
         return ShiftResponse.builder()
                 .id(shift.getId())
                 .storeId(shift.getStoreId())
                 .userId(shift.getUserId())
+                .userName(userName)
                 .shiftDate(shift.getShiftDate())
                 .startedAt(shift.getStartedAt())
                 .endedAt(shift.getEndedAt())

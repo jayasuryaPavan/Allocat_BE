@@ -152,6 +152,12 @@ public class ShiftService {
         return shiftRepository.findShiftsByDateRange(storeId, startDate, endDate);
     }
 
+    @Transactional
+    public Shift updateShift(Shift shift) {
+        log.info("Updating shift: {}", shift.getId());
+        return shiftRepository.save(shift);
+    }
+
     // ============ Day Management ============
 
     @Transactional
