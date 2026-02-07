@@ -67,8 +67,13 @@ public class InventoryService {
         Inventory inventory;
         if (existingInventory.isPresent()) {
             inventory = existingInventory.get();
-            // Update existing inventory
-            inventory.setCurrentQuantity(inventory.getCurrentQuantity() + quantity);
+            // Update existing inventory - add to storage
+            inventory.setStorageQuantity(inventory.getStorageQuantity() + quantity);
+
+            // Recalculate current quantity (also handled by DB trigger, but kept for
+            // consistency)
+            inventory.setCurrentQuantity(inventory.getStorageQuantity() + inventory.getAisleQuantity());
+
             inventory.setTotalValue(inventory.getTotalValue().add(
                     receivedStock.getUnitPrice().multiply(BigDecimal.valueOf(quantity))));
             inventory.setLastUpdated(LocalDateTime.now());
@@ -79,6 +84,8 @@ public class InventoryService {
             inventory = Inventory.builder()
                     .product(product)
                     .store(defaultStore)
+                    .storageQuantity(quantity)
+                    .aisleQuantity(0)
                     .currentQuantity(quantity)
                     .reservedQuantity(0)
                     .availableQuantity(quantity)
@@ -109,20 +116,25 @@ public class InventoryService {
         }
 
         Inventory inventory = inventoryOpt.get();
-        int newQuantity = inventory.getCurrentQuantity() + quantityChange;
+        // Default to updating storage quantity for general adjustments
+        int newStorageQuantity = inventory.getStorageQuantity() + quantityChange;
 
-        if (newQuantity < 0) {
-            throw new RuntimeException("Insufficient inventory. Current: " + inventory.getCurrentQuantity() +
-                    ", Requested change: " + quantityChange);
+        if (newStorageQuantity < 0) {
+            throw new RuntimeException(
+                    "Insufficient storage inventory. Current Storage: " + inventory.getStorageQuantity() +
+                            ", Requested change: " + quantityChange);
         }
 
-        inventory.setCurrentQuantity(newQuantity);
+        inventory.setStorageQuantity(newStorageQuantity);
+        inventory.setCurrentQuantity(newStorageQuantity + inventory.getAisleQuantity());
+
         inventory.setLastUpdated(LocalDateTime.now());
         inventory.setLastUpdatedBy(updatedBy);
 
         // Update total value based on unit cost
         if (inventory.getUnitCost() != null) {
-            inventory.setTotalValue(inventory.getUnitCost().multiply(BigDecimal.valueOf(newQuantity)));
+            inventory.setTotalValue(
+                    inventory.getUnitCost().multiply(BigDecimal.valueOf(inventory.getCurrentQuantity())));
         }
 
         return inventoryRepository.save(inventory);

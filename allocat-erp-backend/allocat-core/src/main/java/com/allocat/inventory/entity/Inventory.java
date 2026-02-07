@@ -28,20 +28,34 @@ public class Inventory extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private Store store;
 
+    // Computed column managed by DB trigger
     @Column(name = "current_quantity", nullable = false)
     private Integer currentQuantity;
 
     @Column(name = "reserved_quantity")
     @Builder.Default
     private Integer reservedQuantity = 0;
+
+    @Column(name = "storage_quantity")
+    @Builder.Default
+    private Integer storageQuantity = 0;
+
+    @Column(name = "aisle_quantity")
+    @Builder.Default
+    private Integer aisleQuantity = 0;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "aisle_id")
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private Aisle aisle;
 
     @Column(name = "available_quantity", nullable = false)
     private Integer availableQuantity;
@@ -94,4 +108,3 @@ public class Inventory extends BaseEntity {
         this.availableQuantity = this.currentQuantity - this.reservedQuantity;
     }
 }
-

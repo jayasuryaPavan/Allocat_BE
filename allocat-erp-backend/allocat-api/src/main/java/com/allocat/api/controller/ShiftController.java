@@ -10,7 +10,6 @@
 package com.allocat.api.controller;
 
 import com.allocat.api.dto.shift.*;
-import com.allocat.auth.entity.User;
 import com.allocat.auth.repository.UserRepository;
 import com.allocat.common.dto.ApiResponse;
 import com.allocat.pos.entity.SalesPersonLogin;

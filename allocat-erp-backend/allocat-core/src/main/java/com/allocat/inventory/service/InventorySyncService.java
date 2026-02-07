@@ -76,9 +76,12 @@ public class InventorySyncService {
 
             Inventory toInventory = toInventories.get(0);
 
-            // Update quantities
-            fromInventory.setCurrentQuantity(fromInventory.getCurrentQuantity() - quantity);
-            toInventory.setCurrentQuantity(toInventory.getCurrentQuantity() + quantity);
+            // Update quantities (transferring storage quantity by default)
+            fromInventory.setStorageQuantity(fromInventory.getStorageQuantity() - quantity);
+            fromInventory.setCurrentQuantity(fromInventory.getStorageQuantity() + fromInventory.getAisleQuantity());
+
+            toInventory.setStorageQuantity(toInventory.getStorageQuantity() + quantity);
+            toInventory.setCurrentQuantity(toInventory.getStorageQuantity() + toInventory.getAisleQuantity());
 
             // Save
             inventoryRepository.save(fromInventory);
